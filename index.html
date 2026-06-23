@@ -1219,10 +1219,19 @@ function deleteProfile() {
 // ============================================================
 // WATCH HISTORY
 // ============================================================
+function driveThumbnail(id) {
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w320`;
+}
+
 function trackPlay(driveId, meta) {
   const data = getWatchData();
   if (!data[driveId] || data[driveId].status !== 'watched') {
-    const entry = { ts: Date.now(), status: 'watching', ...meta };
+    const entry = {
+      ts: Date.now(),
+      status: 'watching',
+      ...meta,
+      still: meta.still || driveThumbnail(driveId)
+    };
     data[driveId] = entry;
     saveWatchData(data);
     pushToFirebase(driveId, entry);
@@ -1253,17 +1262,20 @@ function renderContinueWatching() {
     .slice(0, 10);
   if (!entries.length) return '';
 
-  const cards = entries.map(([driveId, v]) => `
+  const cards = entries.map(([driveId, v]) => {
+    const thumb = v.still || driveThumbnail(driveId);
+    return `
     <div class="continue-card" onclick="playEp('${driveId}')">
-      ${v.still
-        ? `<img class="continue-thumb" src="${v.still}" loading="lazy"/>`
-        : `<div class="continue-thumb-ph">▶</div>`}
+      <img class="continue-thumb" src="${thumb}" loading="lazy"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <div class="continue-thumb-ph" style="display:none">▶</div>
       <div class="continue-progress"><div class="continue-progress-bar" style="width:30%"></div></div>
       <div class="continue-info">
         <div class="continue-show">${v.showTitle || ''}</div>
         <div class="continue-ep">${v.epTitle || ''}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   return `<div class="row"><div class="row-title">Continue Assistindo</div>
     <div class="cards-scroll">${cards}</div></div>`;
@@ -1410,8 +1422,10 @@ function renderShowDetail() {
     const watched = isWatched(ep.drive_id);
     const isChecked = epSelected.has(ep.drive_id);
 
-    const thumbSrc = ep.still || `https://drive.google.com/thumbnail?id=${ep.drive_id}&sz=w320`;
-    const still = `<img class="ep-thumb-small" src="${thumbSrc}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="event.stopPropagation();setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer" onerror="this.outerHTML='<div class=\\'ep-thumb-small-placeholder\\' style=\\'cursor:pointer;font-size:1rem;color:#555\\' onclick=\\'event.stopPropagation();setEpThumb(\\'${item.id}\\',${currentSeason},${ep.number - 1})\\'>📷</div>'">`;
+    const thumbSrc = ep.still || driveThumbnail(ep.drive_id);
+    const thumbSrc2 = `https://lh3.googleusercontent.com/d/${ep.drive_id}=w320`;
+    const still = `<img class="ep-thumb-small" src="${thumbSrc}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="event.stopPropagation();setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer"
+      onerror="if(this.dataset.retry!='1'){this.dataset.retry='1';this.src='${thumbSrc2}';}else{this.outerHTML='<div class=\\'ep-thumb-small-placeholder\\' style=\\'cursor:pointer;font-size:1rem;color:#555\\' onclick=\\'event.stopPropagation();setEpThumb(\\'${item.id}\\',${currentSeason},${ep.number - 1})\\'>📷</div>'}">`;
     const isPlaying = currentEpId === ep.drive_id;
 
     const checkboxHtml = epSelectMode
