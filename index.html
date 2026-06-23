@@ -410,6 +410,36 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
 .continue-show { font-size:0.7rem; color:#aaa; }
 .continue-ep { font-size:0.8rem; font-weight:600; margin-top:2px; }
 
+/* ---- EP SELECT MODE ---- */
+.ep-checkbox {
+  width:22px; height:22px; border-radius:50%; border:2px solid #555;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all 0.15s; background:#1a1a1a;
+}
+.ep-checkbox.checked { background:var(--red); border-color:var(--red); }
+.ep-checkbox.checked::after { content:'✓'; color:#fff; font-size:0.75rem; font-weight:700; }
+.ep-row.select-mode { cursor:default; }
+.ep-row.select-mode:hover { border-color:#333; }
+.ep-row.select-mode.selected-row { border-color:var(--red); background:#2a0a0a; }
+.select-bar {
+  display:none; position:sticky; bottom:0;
+  background:#1a1a1a; border-top:1px solid #333;
+  padding:12px 20px; gap:10px; align-items:center;
+  justify-content:space-between;
+}
+.select-bar.visible { display:flex; }
+.select-bar-info { font-size:0.85rem; color:#aaa; }
+.btn-delete-sel {
+  background:#c0070f; border:none; color:#fff;
+  padding:9px 18px; border-radius:6px; cursor:pointer;
+  font-size:0.85rem; font-weight:700;
+}
+.btn-delete-sel:disabled { background:#444; cursor:default; }
+.btn-cancel-sel {
+  background:none; border:1px solid #444; color:#aaa;
+  padding:9px 14px; border-radius:6px; cursor:pointer; font-size:0.85rem;
+}
+
 /* ---- WATCHED INDICATORS ---- */
 .ep-watched { opacity:0.5; }
 .ep-watched-badge {
@@ -1331,6 +1361,8 @@ function renderCatalog() {
 let currentShow = null;
 let currentSeason = 0;
 let currentEpId = null;
+let epSelectMode = false;
+let epSelected = new Set();
 const EP_REGISTRY = {}; // driveId -> { showTitle, epTitle, overview }
 
 function openShow(id) {
@@ -1359,13 +1391,27 @@ function renderShowDetail() {
     const epTitle = `T${season.number}:E${ep.number}${ep.title ? ' — ' + ep.title : ''}`;
     EP_REGISTRY[ep.drive_id] = { showTitle: item.title, epTitle, overview: ep.overview || '', still: ep.still || '' };
     const watched = isWatched(ep.drive_id);
+    const isChecked = epSelected.has(ep.drive_id);
 
     const thumbSrc = ep.still || `https://drive.google.com/thumbnail?id=${ep.drive_id}&sz=w320`;
     const still = `<img class="ep-thumb-small" src="${thumbSrc}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="event.stopPropagation();setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer" onerror="this.outerHTML='<div class=\\'ep-thumb-small-placeholder\\' style=\\'cursor:pointer;font-size:1rem;color:#555\\' onclick=\\'event.stopPropagation();setEpThumb(\\'${item.id}\\',${currentSeason},${ep.number - 1})\\'>📷</div>'">`;
     const isPlaying = currentEpId === ep.drive_id;
 
+    const checkboxHtml = epSelectMode
+      ? `<div class="ep-checkbox ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation();toggleEpSelect('${ep.drive_id}')"></div>`
+      : '';
+    const rowClick = epSelectMode
+      ? `onclick="toggleEpSelect('${ep.drive_id}')" style="cursor:pointer"`
+      : `onclick="playEp('${ep.drive_id}')" style="cursor:pointer"`;
+    const actionsHtml = epSelectMode ? '' : `
+      <div class="ep-actions">
+        <button class="btn-ep-play" onclick="event.stopPropagation();playEp('${ep.drive_id}')">▶ Play</button>
+        <a class="btn-ep-dl" href="https://drive.google.com/uc?export=download&id=${ep.drive_id}" target="_blank" onclick="event.stopPropagation()">⬇ Drive</a>
+      </div>`;
+
     return `
-      <div class="ep-row ${isPlaying ? 'playing' : ''} ${watched ? 'ep-watched' : ''}" id="ep-row-${ep.drive_id}" onclick="playEp('${ep.drive_id}')" style="cursor:pointer">
+      <div class="ep-row ${isPlaying ? 'playing' : ''} ${watched ? 'ep-watched' : ''} ${epSelectMode ? 'select-mode' : ''} ${isChecked ? 'selected-row' : ''}" id="ep-row-${ep.drive_id}" ${rowClick}>
+        ${checkboxHtml}
         ${still}
         <div class="ep-text">
           <div class="ep-num-title">
@@ -1374,13 +1420,11 @@ function renderShowDetail() {
           </div>
           <div class="ep-summary">${ep.overview || 'Sem resumo disponível.'}</div>
         </div>
-        <div class="ep-actions">
-          <button class="btn-ep-play" onclick="playEp('${ep.drive_id}')">▶ Play</button>
-          <a class="btn-ep-dl" href="https://drive.google.com/uc?export=download&id=${ep.drive_id}" target="_blank">⬇ Drive</a>
-        </div>
+        ${actionsHtml}
       </div>`;
   }).join('');
 
+  const selCount = epSelected.size;
   inner.innerHTML = `
     <div style="position:relative">
       ${item.backdrop
@@ -1394,12 +1438,49 @@ function renderShowDetail() {
           <h2>${item.title}</h2>
           <p>${item.overview || ''}</p>
         </div>
-        <button onclick="deleteShow('${item.id}')" style="flex-shrink:0;background:#3a0a0a;border:1px solid #7a1a1a;color:#f88;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">🗑 Excluir</button>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button onclick="toggleEpSelectMode()" style="background:${epSelectMode?'#444':'none'};border:1px solid #555;color:#aaa;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">${epSelectMode ? '✕ Cancelar' : '☑ Selecionar'}</button>
+          <button onclick="deleteShow('${item.id}')" style="background:#3a0a0a;border:1px solid #7a1a1a;color:#f88;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">🗑 Excluir série</button>
+        </div>
       </div>
     </div>
     <div class="season-bar">${tabsHtml}</div>
     <div class="ep-list">${epsHtml}</div>
+    <div class="select-bar ${epSelectMode ? 'visible' : ''}" id="select-bar">
+      <span class="select-bar-info">${selCount > 0 ? `${selCount} ep${selCount > 1 ? 's' : ''} selecionado${selCount > 1 ? 's' : ''}` : 'Toque nos episódios para selecionar'}</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel-sel" onclick="toggleEpSelectMode()">Cancelar</button>
+        <button class="btn-delete-sel" onclick="deleteSelectedEps('${item.id}')" ${selCount === 0 ? 'disabled' : ''}>🗑 Excluir ${selCount > 0 ? selCount : ''}</button>
+      </div>
+    </div>
   `;
+}
+
+function toggleEpSelectMode() {
+  epSelectMode = !epSelectMode;
+  epSelected.clear();
+  renderShowDetail();
+}
+
+function toggleEpSelect(driveId) {
+  if (epSelected.has(driveId)) epSelected.delete(driveId);
+  else epSelected.add(driveId);
+  renderShowDetail();
+}
+
+function deleteSelectedEps(itemId) {
+  if (epSelected.size === 0) return;
+  if (!confirm(`Excluir ${epSelected.size} episódio(s) selecionado(s)?`)) return;
+  const item = catalog.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.seasons[currentSeason].episodes = item.seasons[currentSeason].episodes
+    .filter(ep => !epSelected.has(ep.drive_id));
+  // renumera
+  item.seasons[currentSeason].episodes.forEach((ep, i) => { ep.number = i + 1; });
+  epSelected.clear();
+  epSelectMode = false;
+  saveCatalog(catalog);
+  renderShowDetail();
 }
 
 function deleteShow(id) {
