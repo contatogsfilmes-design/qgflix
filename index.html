@@ -658,13 +658,40 @@ const INITIAL_CATALOG = {
       poster: '',
       seasons: [
         {
-          number: 1,
+          number: 5,
           episodes: [
-            { number:1, title:'Comida Queimada', overview:'Shaun Murphy, um jovem médico autista com síndrome savant, chega ao San Jose St. Bonaventure Hospital para trabalhar na cirurgia pediátrica, enfrentando ceticismo de colegas e pacientes.', still:'', drive_id:'1GeDNlusc22sGyLicl7zq0xQ_8YdgWBaJ' },
-            { number:2, title:'Cara Estranha', overview:'Shaun começa a se adaptar ao hospital enquanto trata um caso complexo que testa suas habilidades únicas. Seus colegas começam a perceber seu talento excepcional.', still:'', drive_id:'1ecb0nV4Ls0WKCThGN6VrHv095wj1bsqK' },
-            { number:3, title:'Oliver', overview:'Shaun trata um menino com um problema cardíaco raro enquanto enfrenta dificuldades para se conectar socialmente com a equipe do hospital.', still:'', drive_id:'11ePxP-63BkVrgK8d1cWCZKhXHZB2_AwI' },
-            { number:4, title:'Erro', overview:'Um erro médico coloca Shaun em uma posição difícil. Ele precisa decidir entre seguir as regras ou fazer o que acredita ser certo para salvar um paciente.', still:'', drive_id:'1bO42IpE6ZPOsaeR47oLorqbOg5daLk0G' },
-            { number:5, title:'Point Three Percent', overview:'Shaun e a equipe trabalham em um caso extremamente raro enquanto ele continua a provar seu valor no hospital, desafiando as expectativas de todos ao seu redor.', still:'', drive_id:'15TzDOZ5rQA54NciY329P4MTfhwpyCFCS' },
+            { number:1, title:'', overview:'', still:'', drive_id:'1GeDNlusc22sGyLicl7zq0xQ_8YdgWBaJ' },
+            { number:2, title:'', overview:'', still:'', drive_id:'1ecb0nV4Ls0WKCThGN6VrHv095wj1bsqK' },
+            { number:3, title:'', overview:'', still:'', drive_id:'11ePxP-63BkVrgK8d1cWCZKhXHZB2_AwI' },
+            { number:4, title:'', overview:'', still:'', drive_id:'1bO42IpE6ZPOsaeR47oLorqbOg5daLk0G' },
+            { number:5, title:'', overview:'', still:'', drive_id:'15TzDOZ5rQA54NciY329P4MTfhwpyCFCS' },
+          ]
+        },
+        {
+          number: 6,
+          episodes: [
+            { number:1,  title:'', overview:'', still:'', drive_id:'1L230u8KAWbDt9wpzpLo52wyU0JoFVvKc' },
+            { number:2,  title:'', overview:'', still:'', drive_id:'1G243eRqBzj2pjx_7tOFmUY_TeTmAg03r' },
+            { number:3,  title:'', overview:'', still:'', drive_id:'1cmjOot8dVn6a22HQ_IP2xAi-5YDFB7qk' },
+            { number:4,  title:'', overview:'', still:'', drive_id:'1hSbCkaNPZvlHvdixqZdq7p1c45BUfZwi' },
+            { number:5,  title:'', overview:'', still:'', drive_id:'1Mf-W1t6AKUMvJpEmohuqqDvSKZPUhlJ-' },
+            { number:6,  title:'', overview:'', still:'', drive_id:'1_yJP0g6zPRylIuz1efGccxMemZGO52WM' },
+            { number:7,  title:'', overview:'', still:'', drive_id:'16LlCeUHhCMTYtISIQrCG8GNswrYxa5ur' },
+            { number:8,  title:'', overview:'', still:'', drive_id:'1rhQtUIueFQc93j_zY1JsEPqRjRwun0sf' },
+            { number:9,  title:'', overview:'', still:'', drive_id:'1cLDXJDqpIM7oqFQ8YbflTCRJEG-TiuHU' },
+            { number:10, title:'', overview:'', still:'', drive_id:'1JTbzCsFI5ANKCXt9mLjiuntL0XK2_r40' },
+            { number:11, title:'', overview:'', still:'', drive_id:'1cxMMBrEwkefninmuNMmcCKruckiKsxYi' },
+            { number:12, title:'', overview:'', still:'', drive_id:'1Yqi8IbhQz4YRd2XNcmmD9oNybLLJ6isF' },
+            { number:13, title:'', overview:'', still:'', drive_id:'1agHOGLtm6mqsqySAEoM2A-DIZj8ETFjq' },
+            { number:14, title:'', overview:'', still:'', drive_id:'1w-GCvlSs9_TnWhcGi_pIGBG6qeK1aqFm' },
+            { number:15, title:'', overview:'', still:'', drive_id:'1qGMc_oz9qhUa2jYuXqky2SYJyHf7IC_2' },
+            { number:16, title:'', overview:'', still:'', drive_id:'1xjqzFGvA0X5W-BkWHmD5hPA0R2RfcCME' },
+            { number:17, title:'', overview:'', still:'', drive_id:'12uXk1j37AXlXMyd4hlWM3QO3zBFkc7RL' },
+            { number:18, title:'', overview:'', still:'', drive_id:'143UbTOJXeG1sc9tkG84Ydt-oSpnVMvN3' },
+            { number:19, title:'', overview:'', still:'', drive_id:'195l7cydbzo6lKlVzJIuffWxSq4jLTyEr' },
+            { number:20, title:'', overview:'', still:'', drive_id:'1RBF4OIDm9uYnlaaCLF65ov2izaW2ZLC-' },
+            { number:21, title:'', overview:'', still:'', drive_id:'1LOo3CaTnq9IikptmMXg0vjaRaCWVyS2l' },
+            { number:22, title:'', overview:'', still:'', drive_id:'10MZCMSyO9LT7y7qhRD1gJdfg4l49iDKY' },
           ]
         }
       ]
@@ -675,11 +702,24 @@ const INITIAL_CATALOG = {
 // ============================================================
 // STORAGE
 // ============================================================
+const CATALOG_VERSION = '2'; // incrementar sempre que INITIAL_CATALOG mudar estrutura
+
 function loadCatalog() {
+  const version = localStorage.getItem('qgflix_catalog_version');
   const saved = localStorage.getItem('qgflix_catalog');
-  return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_CATALOG));
+  if (!saved || version !== CATALOG_VERSION) {
+    // versão desatualizada ou primeira vez — reseta com os dados do HTML
+    const fresh = JSON.parse(JSON.stringify(INITIAL_CATALOG));
+    localStorage.setItem('qgflix_catalog', JSON.stringify(fresh));
+    localStorage.setItem('qgflix_catalog_version', CATALOG_VERSION);
+    return fresh;
+  }
+  return JSON.parse(saved);
 }
-function saveCatalog(c) { localStorage.setItem('qgflix_catalog', JSON.stringify(c)); }
+function saveCatalog(c) {
+  localStorage.setItem('qgflix_catalog', JSON.stringify(c));
+  localStorage.setItem('qgflix_catalog_version', CATALOG_VERSION);
+}
 function getSettings() { return JSON.parse(localStorage.getItem('qgflix_settings') || '{}'); }
 function saveSettingsData(d) { localStorage.setItem('qgflix_settings', JSON.stringify(d)); }
 
