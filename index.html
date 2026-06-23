@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>QGFLIX</title>
+<style>
+:root {
+  --red: #e50914;
+  --dark: #0f0f0f;
+  --card: #1a1a1a;
+  --hover: #2a2a2a;
+  --text: #fff;
+  --muted: #aaa;
+  --radius: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* HEADER */
+.header {
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  background:linear-gradient(to bottom,#000 0%,transparent 100%);
+  padding:14px 24px;
+  display:flex; align-items:center; gap:24px;
+}
+.logo { font-size:1.6rem; font-weight:900; color:var(--red); letter-spacing:3px; flex-shrink:0; }
+.header-actions { margin-left:auto; display:flex; gap:12px; align-items:center; }
+.btn-icon { background:none; border:1px solid #444; color:#fff; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:0.85rem; display:flex; align-items:center; gap:6px; transition:background 0.2s; }
+.btn-icon:hover { background:#222; }
+.btn-add { background:var(--red); border-color:var(--red); font-weight:700; }
+.btn-add:hover { background:#b0070f; }
+
+/* HERO */
+.hero {
+  width:100%; height:70vh; min-height:380px;
+  position:relative; overflow:hidden;
+  display:flex; align-items:flex-end;
+}
+.hero-bg {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center top;
+  transition:all 0.5s;
+}
+.hero-gradient {
+  position:absolute; inset:0;
+  background:linear-gradient(to top, #0f0f0f 0%, transparent 50%),
+             linear-gradient(to right, rgba(0,0,0,0.8) 30%, transparent 80%);
+}
+.hero-content { position:relative; padding:32px 24px; max-width:600px; }
+.hero-badge { background:var(--red); font-size:0.65rem; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1px; display:inline-block; margin-bottom:10px; }
+.hero-title { font-size:2.6rem; font-weight:900; line-height:1.1; margin-bottom:10px; }
+.hero-overview { color:#ccc; font-size:0.88rem; line-height:1.5; margin-bottom:18px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.hero-btns { display:flex; gap:10px; flex-wrap:wrap; }
+.btn-play { background:#fff; color:#000; border:none; padding:10px 22px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; gap:8px; }
+.btn-play:hover { background:#ddd; }
+.btn-info { background:rgba(109,109,110,0.7); color:#fff; border:none; padding:10px 22px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.9rem; }
+.btn-info:hover { background:rgba(109,109,110,0.9); }
+
+/* CATALOGO */
+.catalog { padding:16px 24px 80px; }
+.row { margin-bottom:36px; }
+.row-title { font-size:1.1rem; font-weight:700; margin-bottom:14px; color:#eee; }
+
+/* CARDS */
+.cards-scroll { display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+.cards-scroll::-webkit-scrollbar { height:4px; }
+.cards-scroll::-webkit-scrollbar-track { background:#1a1a1a; }
+.cards-scroll::-webkit-scrollbar-thumb { background:#444; border-radius:2px; }
+.card {
+  flex-shrink:0; width:160px; cursor:pointer;
+  border-radius:var(--radius); overflow:hidden;
+  background:var(--card); transition:transform 0.2s;
+  scroll-snap-align:start;
+  position:relative;
+}
+.card:hover { transform:scale(1.05); }
+.card-thumb {
+  width:100%; aspect-ratio:16/9;
+  background:#333; object-fit:cover; display:block;
+}
+.card-thumb-placeholder {
+  width:100%; aspect-ratio:16/9;
+  background:linear-gradient(135deg,#222,#111);
+  display:flex; align-items:center; justify-content:center;
+  font-size:2rem;
+}
+.card-info { padding:10px; }
+.card-title { font-size:0.8rem; font-weight:600; margin-bottom:4px; }
+.card-sub { font-size:0.7rem; color:var(--muted); }
+.card-badge {
+  position:absolute; top:6px; left:6px;
+  background:var(--red); font-size:0.6rem; font-weight:700;
+  padding:2px 6px; border-radius:3px;
+}
+
+/* MODAL PLAYER */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:500;
+  display:none; align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal-player { width:95vw; max-width:960px; background:#111; border-radius:12px; overflow:hidden; position:relative; }
+.modal-close { position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.7); border:none; color:#fff; width:34px; height:34px; border-radius:50%; font-size:1.1rem; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; }
+.modal-close:hover { background:#e50914; }
+.player-frame { width:100%; aspect-ratio:16/9; border:none; background:#000; display:block; }
+.modal-info { padding:16px 20px; }
+.modal-show-title { font-size:0.8rem; color:var(--muted); margin-bottom:4px; }
+.modal-ep-title { font-size:1.1rem; font-weight:700; margin-bottom:8px; }
+.modal-overview { font-size:0.82rem; color:#bbb; line-height:1.5; margin-bottom:12px; }
+.modal-actions { display:flex; gap:10px; }
+.btn-download { background:#1a1a1a; border:1px solid #333; color:#fff; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:0.8rem; text-decoration:none; display:flex; align-items:center; gap:6px; }
+.btn-download:hover { background:#2a2a2a; }
+
+/* MODAL EPISODES (série selecionada) */
+.modal-show { width:95vw; max-width:860px; background:#141414; border-radius:12px; overflow:hidden; max-height:90vh; overflow-y:auto; }
+.show-hero { width:100%; aspect-ratio:16/9; max-height:280px; object-fit:cover; background:#222; display:block; position:relative; }
+.show-hero-placeholder { width:100%; height:200px; background:linear-gradient(135deg,#1a1a1a,#0a0a0a); display:flex; align-items:center; justify-content:center; font-size:4rem; }
+.show-header { padding:20px; }
+.show-header h2 { font-size:1.5rem; font-weight:900; margin-bottom:8px; }
+.show-header p { font-size:0.85rem; color:#bbb; line-height:1.5; }
+/* SEASON DROPDOWN (estilo Netflix) */
+.season-bar { display:flex; align-items:center; gap:12px; padding:0 20px 16px; flex-wrap:wrap; }
+.season-select {
+  appearance:none; -webkit-appearance:none;
+  background:#141414; border:2px solid #555; color:#fff;
+  padding:8px 36px 8px 14px; border-radius:6px; font-size:0.9rem; font-weight:600;
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
+  transition:border-color 0.2s;
+}
+.season-select:focus { outline:none; border-color:var(--red); }
+.season-select option { background:#1a1a1a; }
+.btn-add-season { background:none; border:1px solid #555; color:#aaa; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:0.8rem; white-space:nowrap; }
+.btn-add-season:hover { border-color:#fff; color:#fff; }
+.ep-list { padding:0 20px 20px; display:flex; flex-direction:column; gap:10px; }
+.ep-row {
+  display:flex; gap:12px; align-items:flex-start;
+  background:#1e1e1e; border-radius:var(--radius); padding:12px;
+  cursor:pointer; border:2px solid transparent; transition:border-color 0.2s;
+}
+.ep-row:hover { border-color:#333; }
+.ep-row.playing { border-color:var(--red); }
+.ep-thumb-small {
+  width:120px; flex-shrink:0;
+  aspect-ratio:16/9; object-fit:cover;
+  border-radius:6px; background:#333;
+}
+.ep-thumb-small-placeholder {
+  width:120px; flex-shrink:0;
+  aspect-ratio:16/9; background:#2a2a2a;
+  border-radius:6px; display:flex; align-items:center; justify-content:center;
+  font-size:1.5rem; position:relative;
+}
+.ep-text { flex:1; min-width:0; }
+.ep-num-title { font-size:0.82rem; font-weight:700; margin-bottom:4px; }
+.ep-summary { font-size:0.75rem; color:#999; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ep-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex-shrink:0; }
+.btn-ep-play { background:var(--red); border:none; color:#fff; padding:6px 12px; border-radius:5px; cursor:pointer; font-size:0.75rem; font-weight:700; white-space:nowrap; }
+.btn-ep-dl { background:#1a1a1a; border:1px solid #333; color:#aaa; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.7rem; text-decoration:none; white-space:nowrap; }
+.btn-ep-dl:hover { color:#fff; }
+
+/* MODAL ADD */
+.modal-add { width:95vw; max-width:560px; background:#1a1a1a; border-radius:12px; padding:24px; max-height:90vh; overflow-y:auto; }
+.modal-add h2 { font-size:1.2rem; margin-bottom:20px; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:0.8rem; color:#aaa; margin-bottom:6px; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; background:#111; border:1px solid #333; color:#fff;
+  padding:10px 12px; border-radius:6px; font-size:0.88rem;
+}
+.form-group textarea { min-height:80px; resize:vertical; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--red); }
+.ep-inputs { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.ep-input-row { display:flex; gap:8px; align-items:center; }
+.ep-input-row span { color:#555; font-size:0.8rem; width:24px; flex-shrink:0; }
+.ep-input-row input { flex:1; }
+.btn-add-ep { background:none; border:1px dashed #444; color:#888; padding:8px; border-radius:6px; cursor:pointer; width:100%; font-size:0.8rem; margin-top:6px; }
+.btn-add-ep:hover { border-color:#666; color:#aaa; }
+.form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+.btn-cancel { background:none; border:1px solid #444; color:#aaa; padding:10px 20px; border-radius:6px; cursor:pointer; }
+.btn-save { background:var(--red); border:none; color:#fff; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:700; }
+.tmdb-hint { font-size:0.72rem; color:#666; margin-top:4px; }
+.tmdb-hint a { color:#aaa; }
+
+/* MODAL SETTINGS */
+.modal-settings { width:95vw; max-width:460px; background:#1a1a1a; border-radius:12px; padding:24px; }
+.modal-settings h2 { margin-bottom:16px; }
+.settings-row { margin-bottom:14px; }
+.settings-row label { display:block; font-size:0.8rem; color:#aaa; margin-bottom:6px; }
+.settings-row input { width:100%; background:#111; border:1px solid #333; color:#fff; padding:10px 12px; border-radius:6px; font-size:0.85rem; }
+.settings-note { font-size:0.72rem; color:#666; margin-top:6px; }
+
+/* LOADING */
+.loading { color:#555; font-size:0.8rem; padding:4px 0; display:none; }
+
+/* MOBILE */
+@media (max-width:600px) {
+  .hero-title { font-size:1.8rem; }
+  .hero-overview { font-size:0.82rem; -webkit-line-clamp:2; }
+  .card { width:130px; }
+  .hero { height:55vh; }
+  .modal-player { width:100vw; border-radius:0; }
+  .modal-show { width:100vw; border-radius:0; max-height:100vh; }
+  .ep-thumb-small, .ep-thumb-small-placeholder { width:90px; }
+  .modal-add, .modal-settings { width:100vw; border-radius:0; min-height:100vh; }
+  .header { padding:12px 16px; }
+  .logo { font-size:1.3rem; }
+  .catalog { padding:10px 14px 80px; }
+  .hero-content { padding:20px 16px; }
+}
+
+/* FAB mobile */
+.fab {
+  position:fixed; bottom:20px; right:20px; z-index:150;
+  width:52px; height:52px; border-radius:50%;
+  background:var(--red); border:none; color:#fff;
+  font-size:1.5rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+  display:none;
+}
+@media (max-width:600px) { .fab { display:flex; align-items:center; justify-content:center; } .btn-add { display:none; } }
+
+.empty-state { padding:40px; text-align:center; color:#555; }
+.empty-state p { margin-top:8px; font-size:0.85rem; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">QGFLIX</div>
+  <div class="header-actions">
+    <button class="btn-icon btn-add" onclick="openAdd()">+ Adicionar</button>
+    <button class="btn-icon" onclick="openSettings()">⚙ Config</button>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-bg" id="hero-bg"></div>
+  <div class="hero-gradient"></div>
+  <div class="hero-content" id="hero-content">
+    <div class="hero-badge" id="hero-badge">SÉRIE</div>
+    <div class="hero-title" id="hero-title">QGFLIX</div>
+    <div class="hero-overview" id="hero-overview">Adicione séries e filmes para começar.</div>
+    <div class="hero-btns" id="hero-btns"></div>
+  </div>
+</div>
+
+<!-- CATALOGO -->
+<div class="catalog" id="catalog"></div>
+
+<!-- FAB mobile -->
+<button class="fab" onclick="openAdd()">+</button>
+
+<!-- MODAL: PLAYER -->
+<div class="modal-overlay" id="modal-player">
+  <div class="modal-player">
+    <button class="modal-close" onclick="closeModal('modal-player')">✕</button>
+    <iframe class="player-frame" id="player-frame" src="" allow="autoplay" allowfullscreen></iframe>
+    <div class="modal-info">
+      <div class="modal-show-title" id="player-show-title"></div>
+      <div class="modal-ep-title" id="player-ep-title"></div>
+      <div class="modal-overview" id="player-overview"></div>
+      <div class="modal-actions">
+        <a class="btn-download" id="player-download" href="#" target="_blank">⬇ Baixar via Drive</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SHOW DETAIL -->
+<div class="modal-overlay" id="modal-show">
+  <div class="modal-show" id="modal-show-content">
+    <button class="modal-close" onclick="closeModal('modal-show')">✕</button>
+    <div id="show-detail-inner"></div>
+  </div>
+</div>
+
+<!-- MODAL: ADD -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal-add">
+    <button class="modal-close" onclick="closeModal('modal-add')">✕</button>
+    <h2>Adicionar Conteúdo</h2>
+
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="add-type" onchange="toggleType()">
+        <option value="series">Série</option>
+        <option value="movie">Filme</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Título</label>
+      <input type="text" id="add-title" placeholder="Ex: The Good Doctor"/>
+    </div>
+
+    <div class="form-group">
+      <label>Sinopse <span style="color:#666">(deixe vazio — buscado automático pelo nome)</span></label>
+      <textarea id="add-overview" placeholder="Descrição da série ou filme..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>URL da Capa/Backdrop <span style="color:#666">(opcional)</span></label>
+      <input type="text" id="add-backdrop" placeholder="https://..."/>
+    </div>
+
+    <!-- SÉRIES -->
+    <div id="section-series">
+      <div class="form-group">
+        <label>Temporada</label>
+        <input type="number" id="add-season" value="1" min="1"/>
+      </div>
+      <div class="form-group">
+        <label>Links ou IDs dos episódios no Google Drive <span style="color:#666">(cole tudo de uma vez — um por linha)</span></label>
+        <textarea id="ep-links-paste" rows="6" placeholder="Cole aqui os links do Drive&#10;https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view&#10;..."></textarea>
+        <div id="ep-parse-preview" style="font-size:0.72rem;color:#666;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- FILME -->
+    <div id="section-movie" style="display:none">
+      <div class="form-group">
+        <label>ID do arquivo no Google Drive</label>
+        <input type="text" id="add-movie-drive" placeholder="Cole o ID do arquivo Drive"/>
+      </div>
+    </div>
+
+    <div class="loading" id="add-loading">Buscando dados automaticamente...</div>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-add')">Cancelar</button>
+      <button class="btn-save" onclick="saveContent()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADICIONAR TEMPORADA -->
+<div class="modal-overlay" id="modal-add-season">
+  <div class="modal-add">
+    <button class="modal-close" onclick="closeModal('modal-add-season')">✕</button>
+    <h2 id="add-season-title">Adicionar Temporada</h2>
+    <div class="form-group">
+      <label>Número da Temporada</label>
+      <input type="number" id="new-season-num" value="2" min="1"/>
+    </div>
+    <div class="form-group">
+      <label>Links ou IDs dos episódios <span style="color:#666">(cole tudo de uma vez — um por linha)</span></label>
+      <textarea id="new-season-links" rows="8" placeholder="Cole aqui os links do Drive&#10;https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view&#10;..."></textarea>
+      <div id="new-season-preview" style="font-size:0.72rem;color:#666;margin-top:4px;"></div>
+    </div>
+    <div class="loading" id="new-season-loading">Buscando dados da temporada...</div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-add-season')">Cancelar</button>
+      <button class="btn-save" onclick="saveNewSeason()">Salvar Temporada</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SETTINGS -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal-settings">
+    <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    <h2>⚙ Configurações</h2>
+    <div class="settings-row">
+      <label>Thumbs e resumos são buscados automaticamente via TVmaze — sem cadastro, sem API key.</label>
+    </div>
+    <div class="form-actions" style="margin-top:20px; justify-content:space-between">
+      <button class="btn-cancel" style="background:#3a0a0a;border-color:#7a1a1a;color:#f88" onclick="clearAllData()">🗑 Limpar catálogo</button>
+      <button class="btn-save" onclick="saveSettings()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DADOS INICIAIS
+// ============================================================
+const INITIAL_CATALOG = {
+  items: [
+    {
+      id: 'the-good-doctor',
+      type: 'series',
+      title: 'The Good Doctor',
+      tmdb_id: 71712,
+      overview: 'Shaun Murphy, um jovem cirurgião autista com síndrome savant, se junta ao departamento de cirurgia de um hospital universitário renomado, onde precisa provar que sua condição não é um obstáculo, mas uma vantagem.',
+      backdrop: '',
+      poster: '',
+      seasons: [
+        {
+          number: 1,
+          episodes: [
+            { number:1, title:'Comida Queimada', overview:'Shaun Murphy, um jovem médico autista com síndrome savant, chega ao San Jose St. Bonaventure Hospital para trabalhar na cirurgia pediátrica, enfrentando ceticismo de colegas e pacientes.', still:'', drive_id:'1GeDNlusc22sGyLicl7zq0xQ_8YdgWBaJ' },
+            { number:2, title:'Cara Estranha', overview:'Shaun começa a se adaptar ao hospital enquanto trata um caso complexo que testa suas habilidades únicas. Seus colegas começam a perceber seu talento excepcional.', still:'', drive_id:'1ecb0nV4Ls0WKCThGN6VrHv095wj1bsqK' },
+            { number:3, title:'Oliver', overview:'Shaun trata um menino com um problema cardíaco raro enquanto enfrenta dificuldades para se conectar socialmente com a equipe do hospital.', still:'', drive_id:'11ePxP-63BkVrgK8d1cWCZKhXHZB2_AwI' },
+            { number:4, title:'Erro', overview:'Um erro médico coloca Shaun em uma posição difícil. Ele precisa decidir entre seguir as regras ou fazer o que acredita ser certo para salvar um paciente.', still:'', drive_id:'1bO42IpE6ZPOsaeR47oLorqbOg5daLk0G' },
+            { number:5, title:'Point Three Percent', overview:'Shaun e a equipe trabalham em um caso extremamente raro enquanto ele continua a provar seu valor no hospital, desafiando as expectativas de todos ao seu redor.', still:'', drive_id:'15TzDOZ5rQA54NciY329P4MTfhwpyCFCS' },
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// ============================================================
+// STORAGE
+// ============================================================
+function loadCatalog() {
+  const saved = localStorage.getItem('qgflix_catalog');
+  return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_CATALOG));
+}
+
+function saveCatalog(catalog) {
+  localStorage.setItem('qgflix_catalog', JSON.stringify(catalog));
+}
+
+function getSettings() {
+  const s = localStorage.getItem('qgflix_settings');
+  return s ? JSON.parse(s) : { tmdb_key: '' };
+}
+
+function saveSettingsData(data) {
+  localStorage.setItem('qgflix_settings', JSON.stringify(data));
+}
+
+// ============================================================
+// TVMAZE (grátis, sem API key)
+// ============================================================
+function stripHtml(html) { return html ? html.replace(/<[^>]*>/g, '') : ''; }
+
+async function tvmazeSearch(title) {
+  try {
+    const r = await fetch(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}`);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+async function tvmazeEpisodes(showId) {
+  try {
+    const r = await fetch(`https://api.tvmaze.com/shows/${showId}/episodes`);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+let catalog = loadCatalog();
+
+function render() {
+  renderHero();
+  renderCatalog();
+}
+
+function renderHero() {
+  const item = catalog.items[0];
+  if (!item) return;
+  const bg = document.getElementById('hero-bg');
+  const title = document.getElementById('hero-title');
+  const overview = document.getElementById('hero-overview');
+  const badge = document.getElementById('hero-badge');
+  const btns = document.getElementById('hero-btns');
+
+  bg.style.backgroundImage = item.backdrop ? `url(${item.backdrop})` : 'linear-gradient(135deg,#1a1a1a,#0a0a0a)';
+  title.textContent = item.title;
+  overview.textContent = item.overview || '';
+  badge.textContent = item.type === 'series' ? 'SÉRIE' : 'FILME';
+
+  btns.innerHTML = `
+    <button class="btn-play" onclick="openShow('${item.id}')">▶ Assistir</button>
+    <button class="btn-info" onclick="openShow('${item.id}')">ℹ Detalhes</button>
+  `;
+}
+
+function renderCatalog() {
+  const el = document.getElementById('catalog');
+  const series = catalog.items.filter(i => i.type === 'series');
+  const movies = catalog.items.filter(i => i.type === 'movie');
+
+  let html = '';
+
+  if (series.length) {
+    html += `<div class="row"><div class="row-title">Séries</div><div class="cards-scroll">`;
+    series.forEach(item => {
+      const thumb = item.poster || '';
+      html += `
+        <div class="card" onclick="openShow('${item.id}')">
+          ${thumb
+            ? `<img class="card-thumb" src="${thumb}" alt="${item.title}" loading="lazy"/>`
+            : `<div class="card-thumb-placeholder">📺</div>`}
+          <div class="card-badge">SÉRIE</div>
+          <div class="card-info">
+            <div class="card-title">${item.title}</div>
+            <div class="card-sub">${item.seasons?.length || 0} temp.</div>
+          </div>
+        </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  if (movies.length) {
+    html += `<div class="row"><div class="row-title">Filmes</div><div class="cards-scroll">`;
+    movies.forEach(item => {
+      const thumb = item.poster || '';
+      html += `
+        <div class="card" onclick="playMovie('${item.id}')">
+          ${thumb
+            ? `<img class="card-thumb" src="${thumb}" alt="${item.title}" loading="lazy" style="aspect-ratio:2/3"/>`
+            : `<div class="card-thumb-placeholder">🎬</div>`}
+          <div class="card-badge">FILME</div>
+          <div class="card-info">
+            <div class="card-title">${item.title}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  if (!series.length && !movies.length) {
+    html = `<div class="empty-state">📭<p>Nenhum conteúdo ainda. Clique em "+ Adicionar" para começar.</p></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ============================================================
+// SHOW DETAIL
+// ============================================================
+let currentShow = null;
+let currentSeason = 0;
+let currentEpId = null;
+const EP_REGISTRY = {}; // driveId -> { showTitle, epTitle, overview }
+
+function openShow(id) {
+  const item = catalog.items.find(i => i.id === id);
+  if (!item) return;
+  currentShow = item;
+  currentSeason = 0;
+  renderShowDetail();
+  document.getElementById('modal-show').classList.add('open');
+}
+
+function renderShowDetail() {
+  const item = currentShow;
+  const season = item.seasons[currentSeason];
+  const inner = document.getElementById('show-detail-inner');
+
+  const optionsHtml = item.seasons.map((s, i) =>
+    `<option value="${i}" ${i === currentSeason ? 'selected' : ''}>Temporada ${s.number}</option>`
+  ).join('');
+  const tabsHtml = `
+    <select class="season-select" onchange="switchSeason(parseInt(this.value))">${optionsHtml}</select>
+    <button class="btn-add-season" onclick="openAddSeason('${item.id}')">+ Temporada</button>
+  `;
+
+  const epsHtml = season.episodes.map(ep => {
+    const epTitle = `T${season.number}:E${ep.number}${ep.title ? ' — ' + ep.title : ''}`;
+    EP_REGISTRY[ep.drive_id] = { showTitle: item.title, epTitle, overview: ep.overview || '' };
+
+    const still = ep.still
+      ? `<img class="ep-thumb-small" src="${ep.still}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer"/>`
+      : `<div class="ep-thumb-small-placeholder" title="Clique para adicionar imagem" onclick="setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer;font-size:1rem;color:#555">📷</div>`;
+    const isPlaying = currentEpId === ep.drive_id;
+
+    return `
+      <div class="ep-row ${isPlaying ? 'playing' : ''}" id="ep-row-${ep.drive_id}">
+        ${still}
+        <div class="ep-text">
+          <div class="ep-num-title">Ep ${ep.number}${ep.title ? ' — ' + ep.title : ''}</div>
+          <div class="ep-summary">${ep.overview || 'Sem resumo disponível.'}</div>
+        </div>
+        <div class="ep-actions">
+          <button class="btn-ep-play" onclick="playEp('${ep.drive_id}')">▶ Play</button>
+          <a class="btn-ep-dl" href="https://drive.google.com/uc?export=download&id=${ep.drive_id}" target="_blank">⬇ Drive</a>
+        </div>
+      </div>`;
+  }).join('');
+
+  inner.innerHTML = `
+    <div style="position:relative">
+      ${item.backdrop
+        ? `<img class="show-hero" src="${item.backdrop}" alt="${item.title}" onerror="this.style.display='none'"/>`
+        : `<div class="show-hero-placeholder">📺</div>`}
+      <button onclick="setShowThumb('${item.id}')" style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.7);border:1px solid #555;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem">📷 Trocar capa</button>
+    </div>
+    <div class="show-header">
+      <h2>${item.title}</h2>
+      <p>${item.overview || ''}</p>
+    </div>
+    <div class="season-bar">${tabsHtml}</div>
+    <div class="ep-list">${epsHtml}</div>
+  `;
+}
+
+function switchSeason(idx) {
+  currentSeason = idx;
+  renderShowDetail();
+}
+
+function setEpThumb(itemId, seasonIdx, epIdx) {
+  const url = prompt('Cole a URL da imagem do episódio:');
+  if (!url) return;
+  const item = catalog.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.seasons[seasonIdx].episodes[epIdx].still = url.trim();
+  saveCatalog(catalog);
+  renderShowDetail();
+}
+
+function setShowThumb(itemId) {
+  const url = prompt('Cole a URL do poster/capa da série:');
+  if (!url) return;
+  const item = catalog.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.poster = url.trim();
+  item.backdrop = url.trim();
+  saveCatalog(catalog);
+  render();
+  renderShowDetail();
+}
+
+function playEp(driveId) {
+  const meta = EP_REGISTRY[driveId] || { showTitle: '', epTitle: '', overview: '' };
+  currentEpId = driveId;
+  document.getElementById('player-frame').src = `https://drive.google.com/file/d/${driveId}/preview`;
+  document.getElementById('player-show-title').textContent = meta.showTitle;
+  document.getElementById('player-ep-title').textContent = meta.epTitle;
+  document.getElementById('player-overview').textContent = meta.overview;
+  document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${driveId}`;
+  closeModal('modal-show');
+  document.getElementById('modal-player').classList.add('open');
+}
+
+function playMovie(id) {
+  const item = catalog.items.find(i => i.id === id);
+  if (!item || !item.drive_id) return;
+  document.getElementById('player-frame').src = `https://drive.google.com/file/d/${item.drive_id}/preview`;
+  document.getElementById('player-show-title').textContent = 'FILME';
+  document.getElementById('player-ep-title').textContent = item.title;
+  document.getElementById('player-overview').textContent = item.overview || '';
+  document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${item.drive_id}`;
+  document.getElementById('modal-player').classList.add('open');
+}
+
+// ============================================================
+// ADD CONTENT
+// ============================================================
+function openAdd() {
+  resetAddForm();
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function resetAddForm() {
+  document.getElementById('add-type').value = 'series';
+  document.getElementById('add-title').value = '';
+  document.getElementById('add-overview').value = '';
+  document.getElementById('add-backdrop').value = '';
+  document.getElementById('add-season').value = '1';
+  document.getElementById('add-movie-drive').value = '';
+  document.getElementById('ep-links-paste').value = '';
+  document.getElementById('ep-parse-preview').textContent = '';
+  document.getElementById('section-series').style.display = '';
+  document.getElementById('section-movie').style.display = 'none';
+}
+
+function toggleType() {
+  const t = document.getElementById('add-type').value;
+  document.getElementById('section-series').style.display = t === 'series' ? '' : 'none';
+  document.getElementById('section-movie').style.display = t === 'movie' ? '' : 'none';
+}
+
+// Extrai IDs do Drive de links colados (URL completa ou só o ID)
+function parseDriveLinks(text) {
+  const lines = text.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  return lines.map(line => {
+    const m = line.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+    return m ? m[1] : (line.match(/^[a-zA-Z0-9_-]{20,}$/) ? line : null);
+  }).filter(Boolean);
+}
+
+// Retorna todos os drive_ids já existentes no catálogo
+function getAllDriveIds() {
+  const ids = new Set();
+  for (const item of catalog.items) {
+    if (item.drive_id) ids.add(item.drive_id);
+    for (const season of item.seasons || [])
+      for (const ep of season.episodes || [])
+        if (ep.drive_id) ids.add(ep.drive_id);
+  }
+  return ids;
+}
+
+// Preview ao colar links
+document.addEventListener('input', e => {
+  if (e.target.id === 'ep-links-paste') {
+    const ids = parseDriveLinks(e.target.value);
+    const existing = getAllDriveIds();
+    const dupes = ids.filter(id => existing.has(id)).length;
+    const preview = document.getElementById('ep-parse-preview');
+    preview.textContent = ids.length
+      ? `${ids.length} episódio(s) detectado(s)${dupes ? ` — ${dupes} duplicado(s) serão ignorados` : ''}`
+      : '';
+  }
+  if (e.target.id === 'new-season-links') {
+    const ids = parseDriveLinks(e.target.value);
+    const existing = getAllDriveIds();
+    const dupes = ids.filter(id => existing.has(id)).length;
+    const preview = document.getElementById('new-season-preview');
+    preview.textContent = ids.length
+      ? `${ids.length} episódio(s) detectado(s)${dupes ? ` — ${dupes} duplicado(s) serão ignorados` : ''}`
+      : '';
+  }
+});
+
+async function saveContent() {
+  const type = document.getElementById('add-type').value;
+  const title = document.getElementById('add-title').value.trim();
+  const overviewInput = document.getElementById('add-overview').value.trim();
+  const backdropInput = document.getElementById('add-backdrop').value.trim();
+
+  if (!title) { alert('Informe o título.'); return; }
+
+  const id = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') + '-' + Date.now();
+  const item = { id, type, title, tvmaze_id: null, overview: overviewInput, backdrop: backdropInput, poster: '' };
+
+  document.getElementById('add-loading').style.display = 'block';
+
+  if (type === 'series') {
+    const seasonNum = parseInt(document.getElementById('add-season').value) || 1;
+    const pasteText = document.getElementById('ep-links-paste').value;
+    const existingIds = getAllDriveIds();
+    const allIds = parseDriveLinks(pasteText);
+    const driveIds = allIds.filter(id => !existingIds.has(id));
+    if (allIds.length && !driveIds.length) { alert('Todos os episódios colados já existem no catálogo.'); document.getElementById('add-loading').style.display='none'; return; }
+
+    const show = await tvmazeSearch(title);
+    if (show) {
+      item.tvmaze_id = show.id;
+      if (!item.overview) item.overview = stripHtml(show.summary);
+      if (show.image) item.poster = show.image.medium || '';
+      if (show.image) item.backdrop = show.image.original || show.image.medium || '';
+
+      const allEps = await tvmazeEpisodes(show.id);
+      const seasonEps = allEps ? allEps.filter(e => e.season === seasonNum) : [];
+
+      item.seasons = [{ number: seasonNum, episodes: driveIds.map((driveId, i) => {
+        const tvEp = seasonEps[i] || {};
+        return {
+          number: i + 1,
+          title: tvEp.name || '',
+          overview: stripHtml(tvEp.summary) || '',
+          still: tvEp.image ? (tvEp.image.medium || '') : '',
+          drive_id: driveId
+        };
+      })}];
+    } else {
+      item.seasons = [{ number: seasonNum, episodes: driveIds.map((driveId, i) => ({
+        number: i+1, title: '', overview: '', still: '', drive_id: driveId
+      }))}];
+    }
+  } else {
+    item.drive_id = document.getElementById('add-movie-drive').value.trim();
+  }
+
+  document.getElementById('add-loading').style.display = 'none';
+  catalog.items.push(item);
+  saveCatalog(catalog);
+  closeModal('modal-add');
+  render();
+}
+
+// ============================================================
+// ADICIONAR TEMPORADA A SÉRIE EXISTENTE
+// ============================================================
+let addSeasonTargetId = null;
+
+function openAddSeason(itemId) {
+  addSeasonTargetId = itemId;
+  const item = catalog.items.find(i => i.id === itemId);
+  const nextSeason = item ? Math.max(...item.seasons.map(s => s.number)) + 1 : 1;
+  document.getElementById('add-season-title').textContent = `Adicionar Temporada — ${item?.title || ''}`;
+  document.getElementById('new-season-num').value = nextSeason;
+  document.getElementById('new-season-links').value = '';
+  document.getElementById('new-season-preview').textContent = '';
+  document.getElementById('modal-add-season').classList.add('open');
+}
+
+async function saveNewSeason() {
+  const item = catalog.items.find(i => i.id === addSeasonTargetId);
+  if (!item) return;
+
+  const seasonNum = parseInt(document.getElementById('new-season-num').value) || 1;
+  if (item.seasons.find(s => s.number === seasonNum)) {
+    alert(`A Temporada ${seasonNum} já existe nessa série.`); return;
+  }
+
+  const pasteText = document.getElementById('new-season-links').value;
+  const existingIds = getAllDriveIds();
+  const allIds = parseDriveLinks(pasteText);
+  const driveIds = allIds.filter(id => !existingIds.has(id));
+
+  if (!driveIds.length) { alert('Nenhum link válido encontrado ou todos já existem.'); return; }
+
+  document.getElementById('new-season-loading').style.display = 'block';
+
+  const episodes = driveIds.map((driveId, i) => ({ number: i+1, title:'', overview:'', still:'', drive_id: driveId }));
+
+  if (item.tvmaze_id) {
+    const allEps = await tvmazeEpisodes(item.tvmaze_id);
+    if (allEps) {
+      const seasonEps = allEps.filter(e => e.season === seasonNum);
+      episodes.forEach((ep, i) => {
+        const tvEp = seasonEps[i];
+        if (!tvEp) return;
+        ep.title = tvEp.name || '';
+        ep.overview = stripHtml(tvEp.summary) || '';
+        ep.still = tvEp.image ? (tvEp.image.medium || '') : '';
+      });
+    }
+  }
+
+  item.seasons.push({ number: seasonNum, episodes });
+  item.seasons.sort((a, b) => a.number - b.number);
+  saveCatalog(catalog);
+  document.getElementById('new-season-loading').style.display = 'none';
+  closeModal('modal-add-season');
+
+  // Vai para a nova temporada na tela de detalhe
+  currentSeason = item.seasons.findIndex(s => s.number === seasonNum);
+  renderShowDetail();
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function openSettings() {
+  document.getElementById('modal-settings').classList.add('open');
+}
+
+function saveSettings() {
+  closeModal('modal-settings');
+}
+
+function clearAllData() {
+  if (!confirm('Apagar todo o catálogo e voltar ao padrão? Isso não tem volta.')) return;
+  localStorage.removeItem('qgflix_catalog');
+  catalog = loadCatalog();
+  closeModal('modal-settings');
+  render();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-player') {
+    document.getElementById('player-frame').src = '';
+    currentEpId = null;
+  }
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+});
+
+// ============================================================
+// AUTO-FETCH TVMAZE AO INICIAR
+// ============================================================
+async function autoFetchTmdb() {
+  let changed = false;
+
+  for (const item of catalog.items) {
+    const needsMeta = !item.poster;
+    const needsEps = item.type === 'series' && item.seasons?.some(s => s.episodes.some(e => !e.still || !e.title));
+    if (!needsMeta && !needsEps) continue;
+
+    let showId = item.tvmaze_id;
+    if (!showId) {
+      const show = await tvmazeSearch(item.title);
+      if (!show) continue;
+      showId = show.id;
+      item.tvmaze_id = showId;
+      if (!item.poster && show.image) item.poster = show.image.medium || '';
+      if (!item.backdrop && show.image) item.backdrop = show.image.original || show.image.medium || '';
+      if (!item.overview && show.summary) item.overview = stripHtml(show.summary);
+      changed = true;
+    }
+
+    if (needsEps && item.type === 'series') {
+      const allEps = await tvmazeEpisodes(showId);
+      if (!allEps) continue;
+      for (const season of item.seasons) {
+        const seasonEps = allEps.filter(e => e.season === season.number);
+        season.episodes.forEach((ep, i) => {
+          const tvEp = seasonEps[i];
+          if (!tvEp) return;
+          if (!ep.title && tvEp.name) ep.title = tvEp.name;
+          if (!ep.overview && tvEp.summary) ep.overview = stripHtml(tvEp.summary);
+          if (!ep.still && tvEp.image) ep.still = tvEp.image.medium || '';
+          changed = true;
+        });
+      }
+    }
+  }
+
+  if (changed) {
+    saveCatalog(catalog);
+    render();
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+render();
+autoFetchTmdb();
+</script>
+</body>
+</html>
