@@ -1790,53 +1790,42 @@ function doSearch(q) {
     }).join('') + `<button class="search-google-btn" onclick="searchGoogle('${q}')">🔍 Buscar "${q}" no Google Drive</button>`;
   } else {
     el.innerHTML = `<div class="search-empty">Nenhum resultado no catálogo para "<b>${q}</b>"</div>
-      <button class="search-google-btn" onclick="searchGoogle('${q}')">🔍 Buscar no Google Drive</button>
-      <button class="search-google-btn" style="margin-top:6px" onclick="searchWithClaude('${q}')">🤖 Buscar info com IA (Claude)</button>`;
+      <button class="search-google-btn" onclick="searchTvmaze('${q.replace(/'/g,"\\'")}')">🔎 Buscar info na internet</button>
+      <button class="search-google-btn" style="margin-top:6px" onclick="searchGoogle('${q}')">🔍 Buscar no Google Drive</button>
+      <div id="tvmaze-result" style="margin-top:10px;width:100%;max-width:600px"></div>`;
   }
 }
 
 function searchGoogle(q) {
-  window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' google drive filetype:mkv OR mp4 site:drive.google.com')}`, '_blank');
+  window.open(`https://www.google.com/search?q=${encodeURIComponent('"' + q + '" drive.google.com')}`, '_blank');
 }
 
 // ============================================================
-// ANTHROPIC API
+// TVMAZE SEARCH (busca pública, sem API key)
 // ============================================================
-async function searchWithClaude(query) {
-  const key = localStorage.getItem('qgflix_anthropic_key');
-  if (!key) {
-    alert('Configure a chave da API Anthropic nas configurações (⚙) primeiro.');
-    return;
-  }
-  const el = document.getElementById('search-results');
-  el.innerHTML += `<div class="search-empty" id="claude-loading">🤖 Perguntando ao Claude sobre "${query}"...</div>`;
-
+async function searchTvmaze(query) {
+  const el = document.getElementById('tvmaze-result');
+  if (!el) return;
+  el.innerHTML = `<div class="search-empty">🔎 Buscando info sobre "${query}"...</div>`;
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-calls': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{
-          role: 'user',
-          content: `Sobre a série ou filme "${query}": me dá em português: título oficial, ano de lançamento, gênero, sinopse em 2 frases, e se é série ou filme. Responda em formato simples, sem markdown.`
-        }]
-      })
-    });
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || 'Sem resposta.';
-    document.getElementById('claude-loading').innerHTML =
-      `<div style="background:#1a1a1a;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.7;color:#ddd;border-left:3px solid #e50914">
-        <b style="color:#e50914">🤖 Claude:</b><br>${text.replace(/\n/g,'<br>')}
+    const r = await fetch(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(query)}`);
+    if (!r.ok) { el.innerHTML = `<div class="search-empty" style="color:#888">Nenhuma informação encontrada para "<b>${query}</b>".</div>`; return; }
+    const show = await r.json();
+    const poster = show.image?.medium || '';
+    const summary = show.summary ? show.summary.replace(/<[^>]*>/g,'') : 'Sem sinopse disponível.';
+    const genres = show.genres?.join(', ') || '—';
+    const year = show.premiered ? show.premiered.slice(0,4) : '—';
+    el.innerHTML = `
+      <div class="search-result-item" style="align-items:flex-start;cursor:default">
+        ${poster ? `<img class="search-result-thumb" src="${poster}" style="height:80px;width:auto;aspect-ratio:unset" loading="lazy"/>` : '<div class="search-result-thumb-ph">📺</div>'}
+        <div class="search-result-info">
+          <div class="search-result-title">${show.name} <span style="color:#666;font-size:0.75rem">(${year})</span></div>
+          <div class="search-result-meta" style="margin-bottom:4px">${genres} · ${show.type || 'Série'}</div>
+          <div style="font-size:0.75rem;color:#aaa;line-height:1.5">${summary.slice(0,180)}${summary.length>180?'…':''}</div>
+        </div>
       </div>`;
   } catch(e) {
-    document.getElementById('claude-loading').textContent = 'Erro ao contatar Claude: ' + e.message;
+    el.innerHTML = `<div class="search-empty" style="color:#888">Erro ao buscar: ${e.message}</div>`;
   }
 }
 
