@@ -1253,9 +1253,8 @@ function renderShowDetail() {
     EP_REGISTRY[ep.drive_id] = { showTitle: item.title, epTitle, overview: ep.overview || '', still: ep.still || '' };
     const watched = isWatched(ep.drive_id);
 
-    const still = ep.still
-      ? `<img class="ep-thumb-small" src="${ep.still}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer"/>`
-      : `<div class="ep-thumb-small-placeholder" title="Clique para adicionar imagem" onclick="setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer;font-size:1rem;color:#555">📷</div>`;
+    const thumbSrc = ep.still || `https://drive.google.com/thumbnail?id=${ep.drive_id}&sz=w320`;
+    const still = `<img class="ep-thumb-small" src="${thumbSrc}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="event.stopPropagation();setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer" onerror="this.outerHTML='<div class=\\'ep-thumb-small-placeholder\\' style=\\'cursor:pointer;font-size:1rem;color:#555\\' onclick=\\'event.stopPropagation();setEpThumb(\\'${item.id}\\',${currentSeason},${ep.number - 1})\\'>📷</div>'">`;
     const isPlaying = currentEpId === ep.drive_id;
 
     return `
