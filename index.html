@@ -336,6 +336,53 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
   .continue-card { width:160px; }
 }
 
+/* ---- SEARCH ---- */
+#search-overlay {
+  display:none; position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,0.92); padding:80px 24px 24px;
+  flex-direction:column; align-items:center; gap:20px;
+}
+#search-overlay.open { display:flex; }
+.search-bar-wrap {
+  width:100%; max-width:600px; display:flex; gap:10px;
+}
+.search-bar-input {
+  flex:1; padding:14px 18px; background:#1a1a1a; border:1px solid #444;
+  color:#fff; border-radius:8px; font-size:1rem; outline:none;
+  transition:border-color 0.2s;
+}
+.search-bar-input:focus { border-color:#e50914; }
+.search-close {
+  background:#222; border:1px solid #444; color:#aaa; padding:0 16px;
+  border-radius:8px; cursor:pointer; font-size:1.1rem;
+}
+.search-results {
+  width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px;
+}
+.search-result-item {
+  background:#1a1a1a; border-radius:8px; padding:14px 16px;
+  display:flex; align-items:center; gap:14px; cursor:pointer;
+  border:1px solid #2a2a2a; transition:background 0.2s, border-color 0.2s;
+}
+.search-result-item:hover { background:#2a2a2a; border-color:#e50914; }
+.search-result-thumb {
+  width:60px; height:34px; border-radius:4px; object-fit:cover; background:#333; flex-shrink:0;
+}
+.search-result-thumb-ph {
+  width:60px; height:34px; border-radius:4px; background:#222;
+  display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;
+}
+.search-result-info { flex:1; }
+.search-result-title { font-size:0.95rem; font-weight:600; }
+.search-result-meta { font-size:0.75rem; color:#777; margin-top:3px; }
+.search-empty { color:#666; font-size:0.9rem; text-align:center; padding:20px; }
+.search-google-btn {
+  background:none; border:1px solid #444; color:#aaa; padding:10px 20px;
+  border-radius:8px; cursor:pointer; font-size:0.85rem; margin-top:4px;
+  transition:border-color 0.2s, color 0.2s;
+}
+.search-google-btn:hover { border-color:#4285f4; color:#4285f4; }
+
 /* ---- GATE SCREEN ---- */
 #gate-screen {
   position:fixed; inset:0; z-index:9999;
@@ -470,12 +517,24 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
   <div class="logo">QGFLIX</div>
   <div class="header-actions">
     <button class="btn-icon btn-add" onclick="openAdd()">+ Adicionar</button>
+    <button class="btn-icon" onclick="openSearch()">🔍</button>
     <button class="btn-icon" onclick="openSettings()">⚙</button>
-    <button class="btn-icon" id="btn-login" onclick="firebaseLogin()" style="display:none">🔑 Entrar</button>
     <span id="sync-indicator" style="font-size:0.7rem;color:#666;display:none">☁ sincronizando...</span>
     <div class="profile-btn" id="header-profile" onclick="showProfileScreen()" title="Trocar perfil"></div>
   </div>
 </header>
+
+<!-- SEARCH OVERLAY -->
+<div id="search-overlay">
+  <div class="search-bar-wrap">
+    <input type="text" class="search-bar-input" id="search-input"
+      placeholder="Buscar no catálogo..."
+      oninput="doSearch(this.value)"
+      onkeydown="if(event.key==='Escape')closeSearch()"/>
+    <button class="search-close" onclick="closeSearch()">✕</button>
+  </div>
+  <div class="search-results" id="search-results"></div>
+</div>
 
 <!-- HERO -->
 <div class="hero" id="hero">
@@ -609,13 +668,14 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
     <div class="settings-row">
       <label>Thumbs e resumos buscados via TVmaze — sem API key.</label>
     </div>
-    <div class="settings-row" id="firebase-status-row" style="margin-top:12px">
-      <label id="firebase-status-label">☁ Carregando status...</label>
+    <div class="form-group" style="margin-top:16px">
+      <label style="font-size:0.85rem;color:#aaa">🤖 Chave da API Anthropic <span style="color:#555">(opcional — usada para buscar info de séries não encontradas no TVmaze)</span></label>
+      <input type="password" id="anthropic-key-input" placeholder="sk-ant-..." style="margin-top:6px;width:100%;padding:10px 14px;background:#111;border:1px solid #333;color:#fff;border-radius:6px;font-size:0.9rem;outline:none"/>
+      <div style="font-size:0.72rem;color:#555;margin-top:4px">A chave fica salva só neste navegador (localStorage).</div>
     </div>
     <div class="form-actions" style="margin-top:20px; justify-content:space-between; flex-wrap:wrap; gap:8px">
       <button class="btn-cancel" style="background:#3a0a0a;border-color:#7a1a1a;color:#f88" onclick="clearAllData()">🗑 Limpar catálogo</button>
-      <button class="btn-cancel" id="btn-logout" style="display:none" onclick="firebaseLogout()">Sair da conta</button>
-      <button class="btn-save" onclick="saveSettings()">Fechar</button>
+      <button class="btn-save" onclick="saveSettings()">Salvar</button>
     </div>
   </div>
 </div>
@@ -648,20 +708,7 @@ function firebaseLogout() {
 
 auth.onAuthStateChanged(user => {
   firebaseUser = user;
-  const btnLogin = document.getElementById('btn-login');
-  const headerProfile = document.getElementById('header-profile');
-  if (user) {
-    btnLogin.style.display = 'none';
-    // Atualiza avatar do header com foto do Google
-    if (headerProfile) {
-      headerProfile.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>`;
-      headerProfile.title = user.displayName + ' — clique para trocar perfil';
-    }
-    syncFromFirebase();
-  } else {
-    btnLogin.style.display = 'flex';
-    updateHeaderProfile();
-  }
+  if (user) syncFromFirebase();
 });
 
 async function syncFromFirebase() {
@@ -1490,20 +1537,105 @@ async function saveNewSeason() {
 // SETTINGS
 // ============================================================
 function openSettings() {
-  const label = document.getElementById('firebase-status-label');
-  const btnLogout = document.getElementById('btn-logout');
-  if (firebaseUser) {
-    label.textContent = `☁ Conectado como ${firebaseUser.displayName} (${firebaseUser.email}) — histórico sincronizado`;
-    btnLogout.style.display = 'inline-flex';
-  } else {
-    label.textContent = '☁ Não conectado — histórico salvo só neste dispositivo';
-    btnLogout.style.display = 'none';
-  }
+  const saved = localStorage.getItem('qgflix_anthropic_key') || '';
+  document.getElementById('anthropic-key-input').value = saved;
   document.getElementById('modal-settings').classList.add('open');
 }
 
 function saveSettings() {
+  const key = document.getElementById('anthropic-key-input').value.trim();
+  if (key) localStorage.setItem('qgflix_anthropic_key', key);
+  else localStorage.removeItem('qgflix_anthropic_key');
   closeModal('modal-settings');
+}
+
+// ============================================================
+// BUSCA
+// ============================================================
+function openSearch() {
+  document.getElementById('search-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function doSearch(q) {
+  const el = document.getElementById('search-results');
+  q = q.trim().toLowerCase();
+  if (!q) { el.innerHTML = ''; return; }
+
+  const matches = catalog.items.filter(item =>
+    item.title.toLowerCase().includes(q)
+  );
+
+  if (matches.length) {
+    el.innerHTML = matches.map(item => {
+      const thumb = item.poster
+        ? `<img class="search-result-thumb" src="${item.poster}" loading="lazy"/>`
+        : `<div class="search-result-thumb-ph">🎬</div>`;
+      const seasons = item.type === 'series' ? `${item.seasons?.length || 0} temp.` : 'Filme';
+      return `<div class="search-result-item" onclick="closeSearch();openShow('${item.id}')">
+        ${thumb}
+        <div class="search-result-info">
+          <div class="search-result-title">${item.title}</div>
+          <div class="search-result-meta">${seasons}</div>
+        </div>
+      </div>`;
+    }).join('') + `<button class="search-google-btn" onclick="searchGoogle('${q}')">🔍 Buscar "${q}" no Google Drive</button>`;
+  } else {
+    el.innerHTML = `<div class="search-empty">Nenhum resultado no catálogo para "<b>${q}</b>"</div>
+      <button class="search-google-btn" onclick="searchGoogle('${q}')">🔍 Buscar no Google Drive</button>
+      <button class="search-google-btn" style="margin-top:6px" onclick="searchWithClaude('${q}')">🤖 Buscar info com IA (Claude)</button>`;
+  }
+}
+
+function searchGoogle(q) {
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(q + ' google drive filetype:mkv OR mp4 site:drive.google.com')}`, '_blank');
+}
+
+// ============================================================
+// ANTHROPIC API
+// ============================================================
+async function searchWithClaude(query) {
+  const key = localStorage.getItem('qgflix_anthropic_key');
+  if (!key) {
+    alert('Configure a chave da API Anthropic nas configurações (⚙) primeiro.');
+    return;
+  }
+  const el = document.getElementById('search-results');
+  el.innerHTML += `<div class="search-empty" id="claude-loading">🤖 Perguntando ao Claude sobre "${query}"...</div>`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `Sobre a série ou filme "${query}": me dá em português: título oficial, ano de lançamento, gênero, sinopse em 2 frases, e se é série ou filme. Responda em formato simples, sem markdown.`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || 'Sem resposta.';
+    document.getElementById('claude-loading').innerHTML =
+      `<div style="background:#1a1a1a;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.7;color:#ddd;border-left:3px solid #e50914">
+        <b style="color:#e50914">🤖 Claude:</b><br>${text.replace(/\n/g,'<br>')}
+      </div>`;
+  } catch(e) {
+    document.getElementById('claude-loading').textContent = 'Erro ao contatar Claude: ' + e.message;
+  }
 }
 
 function clearAllData() {
