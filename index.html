@@ -258,16 +258,20 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
   /* CONTINUE ASSISTINDO */
   .continue-card { width:150px; }
 
-  /* MODAL PLAYER — full screen */
+  /* MODAL PLAYER — fullscreen total no mobile */
+  #modal-player { padding:0; align-items:stretch; }
   .modal-player {
     width:100vw; max-width:100vw; border-radius:0;
-    height:100dvh; display:flex; flex-direction:column;
+    height:100dvh; height:100vh;
+    display:flex; flex-direction:column; overflow:hidden;
   }
-  .player-frame { flex:1; aspect-ratio:unset; height:auto; }
-  .modal-info { padding:12px 16px; }
-  .modal-ep-title { font-size:1rem; }
-  .modal-overview { font-size:0.78rem; -webkit-line-clamp:2; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; }
-  .modal-actions { flex-wrap:wrap; gap:8px; }
+  .player-frame { flex:1; aspect-ratio:unset !important; height:auto; min-height:0; }
+  .modal-info { padding:10px 14px; flex-shrink:0; }
+  .modal-ep-title { font-size:0.95rem; }
+  .modal-overview { display:none; }
+  .modal-actions { flex-wrap:wrap; gap:6px; }
+  .btn-mark-watched, .btn-download { font-size:0.75rem; padding:7px 12px; }
+  #btn-fullscreen { display:flex !important; }
 
   /* MODAL SHOW — full screen bottom sheet */
   .modal-overlay { align-items:flex-end; }
@@ -695,13 +699,14 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
 <div class="modal-overlay" id="modal-player">
   <div class="modal-player">
     <button class="modal-close" onclick="closeModal('modal-player')">✕</button>
-    <iframe class="player-frame" id="player-frame" src="" allow="autoplay" allowfullscreen></iframe>
+    <iframe class="player-frame" id="player-frame" src="" allow="autoplay; fullscreen" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>
     <div class="modal-info">
       <div class="modal-show-title" id="player-show-title"></div>
       <div class="modal-ep-title" id="player-ep-title"></div>
       <div class="modal-overview" id="player-overview"></div>
       <div class="modal-actions">
         <button class="btn-mark-watched" id="btn-mark-watched" onclick="markWatched()">✓ Marcar como assistido</button>
+        <button class="btn-download" id="btn-fullscreen" onclick="forceFullscreen()" style="display:none">⛶ Tela cheia</button>
         <a class="btn-download" id="player-download" href="#" target="_blank">⬇ Baixar via Drive</a>
       </div>
     </div>
@@ -1521,45 +1526,52 @@ function setShowThumb(itemId) {
 }
 
 const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isMobile = window.innerWidth <= 600 || isIOS;
+
+function forceFullscreen() {
+  const frame = document.getElementById('player-frame');
+  try {
+    if (frame.requestFullscreen) frame.requestFullscreen();
+    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    else if (frame.webkitEnterFullscreen) frame.webkitEnterFullscreen();
+  } catch(e) {}
+}
 
 function playEp(driveId) {
   const meta = EP_REGISTRY[driveId] || { showTitle: '', epTitle: '', overview: '', still: '' };
   currentEpId = driveId;
   trackPlay(driveId, meta);
-
-  if (isIOS) {
-    // iOS Safari: abre direto no player nativo fullscreen
-    window.open(`https://drive.google.com/file/d/${driveId}/view`, '_blank');
-    return;
-  }
-
-  document.getElementById('player-frame').src = `https://drive.google.com/file/d/${driveId}/preview`;
-  document.getElementById('player-show-title').textContent = meta.showTitle;
-  document.getElementById('player-ep-title').textContent = meta.epTitle;
-  document.getElementById('player-overview').textContent = meta.overview;
-  document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${driveId}`;
-  const btn = document.getElementById('btn-mark-watched');
-  btn.classList.toggle('done', isWatched(driveId));
-  btn.textContent = isWatched(driveId) ? '✓ Assistido' : '✓ Marcar como assistido';
-  closeModal('modal-show');
-  document.getElementById('modal-player').classList.add('open');
+  openPlayer(driveId, meta.showTitle, meta.epTitle, meta.overview);
 }
 
 function playMovie(id) {
   const item = catalog.items.find(i => i.id === id);
   if (!item || !item.drive_id) return;
+  openPlayer(item.drive_id, 'FILME', item.title, item.overview || '');
+}
 
+function openPlayer(driveId, showTitle, epTitle, overview) {
+  const frame = document.getElementById('player-frame');
+  frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
+  document.getElementById('player-show-title').textContent = showTitle;
+  document.getElementById('player-ep-title').textContent = epTitle;
+  document.getElementById('player-overview').textContent = overview;
+  document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${driveId}`;
+  const btn = document.getElementById('btn-mark-watched');
+  btn.classList.toggle('done', isWatched(driveId));
+  btn.textContent = isWatched(driveId) ? '✓ Assistido' : '✓ Marcar como assistido';
+  closeModal('modal-show');
+  const overlay = document.getElementById('modal-player');
+  overlay.classList.add('open');
+  // iOS: tenta fullscreen no iframe após carregar
   if (isIOS) {
-    window.open(`https://drive.google.com/file/d/${item.drive_id}/view`, '_blank');
-    return;
+    frame.onload = () => {
+      try {
+        if (frame.requestFullscreen) frame.requestFullscreen();
+        else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+      } catch(e) {}
+    };
   }
-
-  document.getElementById('player-frame').src = `https://drive.google.com/file/d/${item.drive_id}/preview`;
-  document.getElementById('player-show-title').textContent = 'FILME';
-  document.getElementById('player-ep-title').textContent = item.title;
-  document.getElementById('player-overview').textContent = item.overview || '';
-  document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${item.drive_id}`;
-  document.getElementById('modal-player').classList.add('open');
 }
 
 // ============================================================
