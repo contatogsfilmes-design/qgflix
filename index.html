@@ -223,16 +223,203 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
 
 .empty-state { padding:40px; text-align:center; color:#555; }
 .empty-state p { margin-top:8px; font-size:0.85rem; }
+
+/* ---- PERFIS ---- */
+.profile-screen {
+  position:fixed; inset:0; z-index:999;
+  background:#0f0f0f;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:40px;
+}
+.profile-screen h1 { font-size:1.8rem; font-weight:300; color:#fff; letter-spacing:2px; }
+.profile-grid { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; }
+.profile-card {
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  cursor:pointer; position:relative;
+}
+.profile-avatar {
+  width:80px; height:80px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:2.2rem; border:3px solid transparent;
+  transition:border-color 0.2s, transform 0.15s;
+  overflow:hidden;
+}
+.profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-card:hover .profile-avatar { border-color:#fff; transform:scale(1.05); }
+.profile-name { font-size:0.85rem; color:#aaa; }
+.profile-card:hover .profile-name { color:#fff; }
+.profile-edit-btn {
+  position:absolute; top:-6px; right:-6px;
+  background:#333; border:none; color:#aaa;
+  width:22px; height:22px; border-radius:50%; font-size:0.6rem;
+  cursor:pointer; display:none; align-items:center; justify-content:center;
+}
+.profile-card:hover .profile-edit-btn { display:flex; }
+.profile-add { opacity:0.6; }
+.profile-add:hover { opacity:1; }
+.profile-add .profile-avatar { background:#222; border:2px dashed #555; font-size:2rem; color:#888; }
+.profile-active-badge {
+  position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+  height:3px; width:60%; background:var(--red); border-radius:2px;
+}
+
+/* Profile in header */
+.profile-btn {
+  width:32px; height:32px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1rem; cursor:pointer; border:2px solid transparent;
+  transition:border-color 0.2s; overflow:hidden; flex-shrink:0;
+}
+.profile-btn:hover { border-color:#fff; }
+.profile-btn img { width:100%; height:100%; object-fit:cover; }
+
+/* Modal perfil */
+.modal-profile { width:95vw; max-width:400px; background:#1a1a1a; border-radius:12px; padding:24px; }
+.modal-profile h2 { margin-bottom:20px; }
+.avatar-options { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.avatar-opt {
+  width:44px; height:44px; border-radius:8px; border:2px solid transparent;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3rem; cursor:pointer; transition:border-color 0.2s;
+}
+.avatar-opt:hover, .avatar-opt.selected { border-color:#fff; }
+.color-options { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.color-opt {
+  width:28px; height:28px; border-radius:50%; cursor:pointer;
+  border:3px solid transparent; transition:border-color 0.2s;
+}
+.color-opt:hover, .color-opt.selected { border-color:#fff; }
+.upload-avatar { margin-top:8px; }
+.upload-avatar input { font-size:0.8rem; color:#aaa; background:none; border:none; width:100%; }
+
+/* ---- CONTINUE ASSISTINDO ---- */
+.continue-card {
+  flex-shrink:0; width:200px; cursor:pointer;
+  border-radius:var(--radius); overflow:hidden;
+  background:var(--card); transition:transform 0.2s;
+  scroll-snap-align:start; position:relative;
+}
+.continue-card:hover { transform:scale(1.04); }
+.continue-thumb {
+  width:100%; aspect-ratio:16/9; object-fit:cover; display:block; background:#222;
+}
+.continue-thumb-ph {
+  width:100%; aspect-ratio:16/9; background:#222;
+  display:flex; align-items:center; justify-content:center; font-size:1.5rem;
+}
+.continue-progress { height:3px; background:#333; }
+.continue-progress-bar { height:100%; background:var(--red); }
+.continue-info { padding:8px 10px; }
+.continue-show { font-size:0.7rem; color:#aaa; }
+.continue-ep { font-size:0.8rem; font-weight:600; margin-top:2px; }
+
+/* ---- WATCHED INDICATORS ---- */
+.ep-watched { opacity:0.5; }
+.ep-watched-badge {
+  background:#1a6b1a; color:#7fff7f; font-size:0.65rem;
+  padding:2px 6px; border-radius:3px; font-weight:700;
+}
+.btn-mark-watched {
+  background:#1a1a1a; border:1px solid #444; color:#aaa;
+  padding:8px 16px; border-radius:6px; cursor:pointer;
+  font-size:0.8rem; display:flex; align-items:center; gap:6px;
+}
+.btn-mark-watched:hover { border-color:#7fff7f; color:#7fff7f; }
+.btn-mark-watched.done { border-color:#1a6b1a; color:#7fff7f; background:#0a2a0a; }
+
+@media (max-width:600px) {
+  .profile-avatar { width:64px; height:64px; font-size:1.8rem; }
+  .profile-screen h1 { font-size:1.3rem; }
+  .continue-card { width:160px; }
+}
 </style>
 </head>
 <body>
 
+<!-- TELA DE PERFIS -->
+<div id="profile-screen" class="profile-screen" style="display:none">
+  <h1>Quem está assistindo?</h1>
+  <div class="profile-grid" id="profile-grid"></div>
+</div>
+
+<!-- MODAL: CRIAR/EDITAR PERFIL -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal-profile">
+    <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+    <h2 id="profile-modal-title">Novo Perfil</h2>
+    <input type="hidden" id="editing-profile-id"/>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="profile-name-input" placeholder="Ex: Biel, Família..."/>
+    </div>
+    <div class="form-group">
+      <label>Avatar (emoji)</label>
+      <div class="avatar-options" id="avatar-options">
+        🎬 🎭 🍿 🦁 🐱 🐶 🦊 🐼 🎮 🚀 ⭐ 🌙 🔥 💎 🎵 🏆
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Foto (URL — opcional)</label>
+      <input type="text" id="profile-photo-input" placeholder="https://..."/>
+    </div>
+    <div class="form-group">
+      <label>Cor do avatar</label>
+      <div class="color-options" id="color-options"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" id="profile-delete-btn" style="display:none;color:#f88;border-color:#f44" onclick="deleteProfile()">Excluir</button>
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button class="btn-cancel" onclick="closeModal('modal-profile')">Cancelar</button>
+        <button class="btn-save" onclick="saveProfile()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER --><parameter name="new_string"><!-- TELA DE PERFIS -->
+<div id="profile-screen" class="profile-screen" style="display:none">
+  <h1>Quem está assistindo?</h1>
+  <div class="profile-grid" id="profile-grid"></div>
+</div>
+
+<!-- MODAL: CRIAR/EDITAR PERFIL -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal-profile">
+    <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+    <h2 id="profile-modal-title">Novo Perfil</h2>
+    <input type="hidden" id="editing-profile-id"/>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="profile-name-input" placeholder="Ex: Biel, Família..."/>
+    </div>
+    <div class="form-group">
+      <label>Avatar (emoji)</label>
+      <div class="avatar-options" id="avatar-options"></div>
+    </div>
+    <div class="form-group">
+      <label>Foto (URL — opcional)</label>
+      <input type="text" id="profile-photo-input" placeholder="https://..."/>
+    </div>
+    <div class="form-group">
+      <label>Cor do avatar</label>
+      <div class="color-options" id="color-options"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" id="profile-delete-btn" style="display:none;color:#f88;border-color:#f44" onclick="deleteProfile()">Excluir</button>
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button class="btn-cancel" onclick="closeModal('modal-profile')">Cancelar</button>
+        <button class="btn-save" onclick="saveProfile()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
-<header class="header">
   <div class="logo">QGFLIX</div>
   <div class="header-actions">
     <button class="btn-icon btn-add" onclick="openAdd()">+ Adicionar</button>
-    <button class="btn-icon" onclick="openSettings()">⚙ Config</button>
+    <button class="btn-icon" onclick="openSettings()">⚙</button>
+    <div class="profile-btn" id="header-profile" onclick="showProfileScreen()" title="Trocar perfil"></div>
   </div>
 </header>
 
@@ -264,6 +451,7 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
       <div class="modal-ep-title" id="player-ep-title"></div>
       <div class="modal-overview" id="player-overview"></div>
       <div class="modal-actions">
+        <button class="btn-mark-watched" id="btn-mark-watched" onclick="markWatched()">✓ Marcar como assistido</button>
         <a class="btn-download" id="player-download" href="#" target="_blank">⬇ Baixar via Drive</a>
       </div>
     </div>
@@ -411,18 +599,208 @@ function loadCatalog() {
   const saved = localStorage.getItem('qgflix_catalog');
   return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INITIAL_CATALOG));
 }
+function saveCatalog(c) { localStorage.setItem('qgflix_catalog', JSON.stringify(c)); }
+function getSettings() { return JSON.parse(localStorage.getItem('qgflix_settings') || '{}'); }
+function saveSettingsData(d) { localStorage.setItem('qgflix_settings', JSON.stringify(d)); }
 
-function saveCatalog(catalog) {
-  localStorage.setItem('qgflix_catalog', JSON.stringify(catalog));
+// ============================================================
+// PERFIS
+// ============================================================
+const PROFILE_COLORS = ['#e50914','#0071eb','#2db400','#e67e22','#9b59b6','#e91e8c','#00bcd4','#ff9800'];
+const PROFILE_EMOJIS = ['🎬','🎭','🍿','🦁','🐱','🐶','🦊','🐼','🎮','🚀','⭐','🌙','🔥','💎','🎵','🏆'];
+let selectedAvatar = '🎬';
+let selectedColor = PROFILE_COLORS[0];
+
+function getProfiles() { return JSON.parse(localStorage.getItem('qgflix_profiles') || '[]'); }
+function saveProfiles(p) { localStorage.setItem('qgflix_profiles', JSON.stringify(p)); }
+function getActiveProfileId() { return localStorage.getItem('qgflix_active') || null; }
+function setActiveProfileId(id) { localStorage.setItem('qgflix_active', id); }
+function getActiveProfile() { return getProfiles().find(p => p.id === getActiveProfileId()) || null; }
+
+function getWatchData() {
+  const id = getActiveProfileId();
+  if (!id) return {};
+  return JSON.parse(localStorage.getItem(`qgflix_watch_${id}`) || '{}');
+}
+function saveWatchData(data) {
+  const id = getActiveProfileId();
+  if (!id) return;
+  localStorage.setItem(`qgflix_watch_${id}`, JSON.stringify(data));
 }
 
-function getSettings() {
-  const s = localStorage.getItem('qgflix_settings');
-  return s ? JSON.parse(s) : { tmdb_key: '' };
+function renderProfileAvatar(profile, size = 80) {
+  const s = size + 'px';
+  const fs = Math.round(size * 0.45) + 'px';
+  if (profile.photo) {
+    return `<div class="profile-avatar" style="width:${s};height:${s};background:${profile.color}">
+      <img src="${profile.photo}" onerror="this.style.display='none'"/></div>`;
+  }
+  return `<div class="profile-avatar" style="width:${s};height:${s};background:${profile.color};font-size:${fs}">${profile.avatar}</div>`;
 }
 
-function saveSettingsData(data) {
-  localStorage.setItem('qgflix_settings', JSON.stringify(data));
+function renderProfileGrid() {
+  const profiles = getProfiles();
+  const activeId = getActiveProfileId();
+  const grid = document.getElementById('profile-grid');
+  grid.innerHTML = profiles.map(p => `
+    <div class="profile-card" onclick="selectProfile('${p.id}')">
+      ${renderProfileAvatar(p)}
+      <button class="profile-edit-btn" onclick="event.stopPropagation();openEditProfile('${p.id}')">✎</button>
+      <div class="profile-name">${p.name}</div>
+      ${p.id === activeId ? '<div class="profile-active-badge"></div>' : ''}
+    </div>`).join('') + `
+    <div class="profile-card profile-add" onclick="openNewProfile()">
+      <div class="profile-avatar" style="width:80px;height:80px;background:#222;border:2px dashed #555;font-size:2rem;color:#888">+</div>
+      <div class="profile-name">Adicionar</div>
+    </div>`;
+}
+
+function showProfileScreen() {
+  renderProfileGrid();
+  document.getElementById('profile-screen').style.display = 'flex';
+}
+
+function hideProfileScreen() {
+  document.getElementById('profile-screen').style.display = 'none';
+}
+
+function selectProfile(id) {
+  setActiveProfileId(id);
+  updateHeaderProfile();
+  hideProfileScreen();
+  render();
+}
+
+function updateHeaderProfile() {
+  const p = getActiveProfile();
+  const el = document.getElementById('header-profile');
+  if (!el) return;
+  if (p) {
+    if (p.photo) el.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" onerror="this.parentElement.textContent='${p.avatar}'"/>`;
+    else { el.textContent = p.avatar; el.style.background = p.color; el.style.borderRadius = '6px'; }
+  } else {
+    el.textContent = '👤'; el.style.background = '#333'; el.style.borderRadius = '6px';
+  }
+}
+
+function openNewProfile() {
+  document.getElementById('profile-modal-title').textContent = 'Novo Perfil';
+  document.getElementById('editing-profile-id').value = '';
+  document.getElementById('profile-name-input').value = '';
+  document.getElementById('profile-photo-input').value = '';
+  document.getElementById('profile-delete-btn').style.display = 'none';
+  selectedAvatar = '🎬'; selectedColor = PROFILE_COLORS[0];
+  renderAvatarOptions(); renderColorOptions();
+  document.getElementById('modal-profile').classList.add('open');
+}
+
+function openEditProfile(id) {
+  const p = getProfiles().find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('profile-modal-title').textContent = 'Editar Perfil';
+  document.getElementById('editing-profile-id').value = id;
+  document.getElementById('profile-name-input').value = p.name;
+  document.getElementById('profile-photo-input').value = p.photo || '';
+  document.getElementById('profile-delete-btn').style.display = 'inline-flex';
+  selectedAvatar = p.avatar; selectedColor = p.color;
+  renderAvatarOptions(); renderColorOptions();
+  document.getElementById('modal-profile').classList.add('open');
+}
+
+function renderAvatarOptions() {
+  document.getElementById('avatar-options').innerHTML = PROFILE_EMOJIS.map(e =>
+    `<div class="avatar-opt ${e === selectedAvatar ? 'selected' : ''}" style="background:#222" onclick="selectAvatar('${e}')">${e}</div>`
+  ).join('');
+}
+
+function renderColorOptions() {
+  document.getElementById('color-options').innerHTML = PROFILE_COLORS.map(c =>
+    `<div class="color-opt ${c === selectedColor ? 'selected' : ''}" style="background:${c}" onclick="selectColor('${c}')"></div>`
+  ).join('');
+}
+
+function selectAvatar(e) { selectedAvatar = e; renderAvatarOptions(); }
+function selectColor(c) { selectedColor = c; renderColorOptions(); }
+
+function saveProfile() {
+  const name = document.getElementById('profile-name-input').value.trim();
+  if (!name) { alert('Informe o nome do perfil.'); return; }
+  const photo = document.getElementById('profile-photo-input').value.trim();
+  const editingId = document.getElementById('editing-profile-id').value;
+  const profiles = getProfiles();
+  if (editingId) {
+    const idx = profiles.findIndex(p => p.id === editingId);
+    if (idx >= 0) profiles[idx] = { ...profiles[idx], name, avatar: selectedAvatar, color: selectedColor, photo };
+  } else {
+    profiles.push({ id: 'p_' + Date.now(), name, avatar: selectedAvatar, color: selectedColor, photo });
+  }
+  saveProfiles(profiles);
+  closeModal('modal-profile');
+  renderProfileGrid();
+  updateHeaderProfile();
+}
+
+function deleteProfile() {
+  const id = document.getElementById('editing-profile-id').value;
+  if (!confirm('Excluir este perfil? O histórico de assistidos será perdido.')) return;
+  const profiles = getProfiles().filter(p => p.id !== id);
+  saveProfiles(profiles);
+  localStorage.removeItem(`qgflix_watch_${id}`);
+  if (getActiveProfileId() === id) { setActiveProfileId(''); updateHeaderProfile(); }
+  closeModal('modal-profile');
+  renderProfileGrid();
+}
+
+// ============================================================
+// WATCH HISTORY
+// ============================================================
+function trackPlay(driveId, meta) {
+  const data = getWatchData();
+  if (!data[driveId] || data[driveId].status !== 'watched') {
+    data[driveId] = { ts: Date.now(), status: 'watching', ...meta };
+    saveWatchData(data);
+  }
+}
+
+function markWatched() {
+  if (!currentEpId) return;
+  const data = getWatchData();
+  if (data[currentEpId]) {
+    data[currentEpId].status = 'watched';
+    data[currentEpId].ts = Date.now();
+    saveWatchData(data);
+  }
+  const btn = document.getElementById('btn-mark-watched');
+  btn.classList.add('done');
+  btn.textContent = '✓ Assistido';
+}
+
+function isWatched(driveId) {
+  return getWatchData()[driveId]?.status === 'watched';
+}
+
+function renderContinueWatching() {
+  const data = getWatchData();
+  const entries = Object.entries(data)
+    .filter(([, v]) => v.status === 'watching')
+    .sort(([, a], [, b]) => b.ts - a.ts)
+    .slice(0, 10);
+  if (!entries.length) return '';
+
+  const cards = entries.map(([driveId, v]) => `
+    <div class="continue-card" onclick="playEp('${driveId}')">
+      ${v.still
+        ? `<img class="continue-thumb" src="${v.still}" loading="lazy"/>`
+        : `<div class="continue-thumb-ph">▶</div>`}
+      <div class="continue-progress"><div class="continue-progress-bar" style="width:30%"></div></div>
+      <div class="continue-info">
+        <div class="continue-show">${v.showTitle || ''}</div>
+        <div class="continue-ep">${v.epTitle || ''}</div>
+      </div>
+    </div>`).join('');
+
+  return `<div class="row"><div class="row-title">Continue Assistindo</div>
+    <div class="cards-scroll">${cards}</div></div>`;
 }
 
 // ============================================================
@@ -518,11 +896,12 @@ function renderCatalog() {
     html += '</div></div>';
   }
 
+  const continueHtml = renderContinueWatching();
   if (!series.length && !movies.length) {
     html = `<div class="empty-state">📭<p>Nenhum conteúdo ainda. Clique em "+ Adicionar" para começar.</p></div>`;
   }
 
-  el.innerHTML = html;
+  el.innerHTML = continueHtml + html;
 }
 
 // ============================================================
@@ -557,7 +936,8 @@ function renderShowDetail() {
 
   const epsHtml = season.episodes.map(ep => {
     const epTitle = `T${season.number}:E${ep.number}${ep.title ? ' — ' + ep.title : ''}`;
-    EP_REGISTRY[ep.drive_id] = { showTitle: item.title, epTitle, overview: ep.overview || '' };
+    EP_REGISTRY[ep.drive_id] = { showTitle: item.title, epTitle, overview: ep.overview || '', still: ep.still || '' };
+    const watched = isWatched(ep.drive_id);
 
     const still = ep.still
       ? `<img class="ep-thumb-small" src="${ep.still}" alt="Ep ${ep.number}" loading="lazy" title="Clique para trocar a imagem" onclick="setEpThumb('${item.id}',${currentSeason},${ep.number - 1})" style="cursor:pointer"/>`
@@ -565,10 +945,13 @@ function renderShowDetail() {
     const isPlaying = currentEpId === ep.drive_id;
 
     return `
-      <div class="ep-row ${isPlaying ? 'playing' : ''}" id="ep-row-${ep.drive_id}">
+      <div class="ep-row ${isPlaying ? 'playing' : ''} ${watched ? 'ep-watched' : ''}" id="ep-row-${ep.drive_id}">
         ${still}
         <div class="ep-text">
-          <div class="ep-num-title">Ep ${ep.number}${ep.title ? ' — ' + ep.title : ''}</div>
+          <div class="ep-num-title">
+            Ep ${ep.number}${ep.title ? ' — ' + ep.title : ''}
+            ${watched ? '<span class="ep-watched-badge">✓ Assistido</span>' : ''}
+          </div>
           <div class="ep-summary">${ep.overview || 'Sem resumo disponível.'}</div>
         </div>
         <div class="ep-actions">
@@ -622,13 +1005,17 @@ function setShowThumb(itemId) {
 }
 
 function playEp(driveId) {
-  const meta = EP_REGISTRY[driveId] || { showTitle: '', epTitle: '', overview: '' };
+  const meta = EP_REGISTRY[driveId] || { showTitle: '', epTitle: '', overview: '', still: '' };
   currentEpId = driveId;
+  trackPlay(driveId, meta);
   document.getElementById('player-frame').src = `https://drive.google.com/file/d/${driveId}/preview`;
   document.getElementById('player-show-title').textContent = meta.showTitle;
   document.getElementById('player-ep-title').textContent = meta.epTitle;
   document.getElementById('player-overview').textContent = meta.overview;
   document.getElementById('player-download').href = `https://drive.google.com/uc?export=download&id=${driveId}`;
+  const btn = document.getElementById('btn-mark-watched');
+  btn.classList.toggle('done', isWatched(driveId));
+  btn.textContent = isWatched(driveId) ? '✓ Assistido' : '✓ Marcar como assistido';
   closeModal('modal-show');
   document.getElementById('modal-player').classList.add('open');
 }
@@ -921,6 +1308,18 @@ async function autoFetchTmdb() {
 // ============================================================
 render();
 autoFetchTmdb();
+updateHeaderProfile();
+// Mostra tela de perfis se não tiver perfil ativo
+if (!getActiveProfileId() || !getProfiles().length) {
+  // Cria perfil padrão se não tiver nenhum
+  if (!getProfiles().length) {
+    saveProfiles([{ id: 'p_default', name: 'Eu', avatar: '🎬', color: '#e50914', photo: '' }]);
+    setActiveProfileId('p_default');
+    updateHeaderProfile();
+  } else {
+    showProfileScreen();
+  }
+}
 </script>
 </body>
 </html>
