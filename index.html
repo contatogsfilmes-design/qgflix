@@ -1259,7 +1259,7 @@ function renderShowDetail() {
     const isPlaying = currentEpId === ep.drive_id;
 
     return `
-      <div class="ep-row ${isPlaying ? 'playing' : ''} ${watched ? 'ep-watched' : ''}" id="ep-row-${ep.drive_id}">
+      <div class="ep-row ${isPlaying ? 'playing' : ''} ${watched ? 'ep-watched' : ''}" id="ep-row-${ep.drive_id}" onclick="playEp('${ep.drive_id}')" style="cursor:pointer">
         ${still}
         <div class="ep-text">
           <div class="ep-num-title">
