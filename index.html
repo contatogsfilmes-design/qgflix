@@ -1520,10 +1520,19 @@ function setShowThumb(itemId) {
   renderShowDetail();
 }
 
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 function playEp(driveId) {
   const meta = EP_REGISTRY[driveId] || { showTitle: '', epTitle: '', overview: '', still: '' };
   currentEpId = driveId;
   trackPlay(driveId, meta);
+
+  if (isIOS) {
+    // iOS Safari: abre direto no player nativo fullscreen
+    window.open(`https://drive.google.com/file/d/${driveId}/view`, '_blank');
+    return;
+  }
+
   document.getElementById('player-frame').src = `https://drive.google.com/file/d/${driveId}/preview`;
   document.getElementById('player-show-title').textContent = meta.showTitle;
   document.getElementById('player-ep-title').textContent = meta.epTitle;
@@ -1539,6 +1548,12 @@ function playEp(driveId) {
 function playMovie(id) {
   const item = catalog.items.find(i => i.id === id);
   if (!item || !item.drive_id) return;
+
+  if (isIOS) {
+    window.open(`https://drive.google.com/file/d/${item.drive_id}/view`, '_blank');
+    return;
+  }
+
   document.getElementById('player-frame').src = `https://drive.google.com/file/d/${item.drive_id}/preview`;
   document.getElementById('player-show-title').textContent = 'FILME';
   document.getElementById('player-ep-title').textContent = item.title;
