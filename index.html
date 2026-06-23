@@ -4,6 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>QGFLIX</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --red: #e50914;
@@ -419,6 +422,8 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
   <div class="header-actions">
     <button class="btn-icon btn-add" onclick="openAdd()">+ Adicionar</button>
     <button class="btn-icon" onclick="openSettings()">⚙</button>
+    <button class="btn-icon" id="btn-login" onclick="firebaseLogin()" style="display:none">🔑 Entrar</button>
+    <span id="sync-indicator" style="font-size:0.7rem;color:#666;display:none">☁ sincronizando...</span>
     <div class="profile-btn" id="header-profile" onclick="showProfileScreen()" title="Trocar perfil"></div>
   </div>
 </header>
@@ -553,16 +558,91 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
     <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
     <h2>⚙ Configurações</h2>
     <div class="settings-row">
-      <label>Thumbs e resumos são buscados automaticamente via TVmaze — sem cadastro, sem API key.</label>
+      <label>Thumbs e resumos buscados via TVmaze — sem API key.</label>
     </div>
-    <div class="form-actions" style="margin-top:20px; justify-content:space-between">
+    <div class="settings-row" id="firebase-status-row" style="margin-top:12px">
+      <label id="firebase-status-label">☁ Carregando status...</label>
+    </div>
+    <div class="form-actions" style="margin-top:20px; justify-content:space-between; flex-wrap:wrap; gap:8px">
       <button class="btn-cancel" style="background:#3a0a0a;border-color:#7a1a1a;color:#f88" onclick="clearAllData()">🗑 Limpar catálogo</button>
+      <button class="btn-cancel" id="btn-logout" style="display:none" onclick="firebaseLogout()">Sair da conta</button>
       <button class="btn-save" onclick="saveSettings()">Fechar</button>
     </div>
   </div>
 </div>
 
 <script>
+// ============================================================
+// FIREBASE
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBecIhB5PiaSKNpBQsV-PTYo2Li6ks640o",
+  authDomain: "qgflix-5fd87.firebaseapp.com",
+  projectId: "qgflix-5fd87",
+  storageBucket: "qgflix-5fd87.firebasestorage.app",
+  messagingSenderId: "729466842636",
+  appId: "1:729466842636:web:a63dcbc37e191b97838829"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let firebaseUser = null;
+
+function firebaseLogin() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => alert('Erro ao entrar: ' + e.message));
+}
+
+function firebaseLogout() {
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(user => {
+  firebaseUser = user;
+  const btnLogin = document.getElementById('btn-login');
+  const headerProfile = document.getElementById('header-profile');
+  if (user) {
+    btnLogin.style.display = 'none';
+    // Atualiza avatar do header com foto do Google
+    if (headerProfile) {
+      headerProfile.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>`;
+      headerProfile.title = user.displayName + ' — clique para trocar perfil';
+    }
+    syncFromFirebase();
+  } else {
+    btnLogin.style.display = 'flex';
+    updateHeaderProfile();
+  }
+});
+
+async function syncFromFirebase() {
+  if (!firebaseUser) return;
+  const indicator = document.getElementById('sync-indicator');
+  indicator.style.display = 'inline';
+  try {
+    const snap = await db.collection('users').doc(firebaseUser.uid).collection('watchHistory').get();
+    const remoteData = {};
+    snap.forEach(doc => { remoteData[doc.id] = doc.data(); });
+    // Mescla com dados locais (local tem prioridade se mais recente)
+    const localData = getWatchData();
+    let merged = { ...remoteData };
+    for (const [id, local] of Object.entries(localData)) {
+      if (!merged[id] || local.ts > merged[id].ts) merged[id] = local;
+    }
+    saveWatchData(merged);
+    render();
+  } catch(e) { console.warn('Sync falhou:', e); }
+  indicator.style.display = 'none';
+}
+
+async function pushToFirebase(driveId, entry) {
+  if (!firebaseUser) return;
+  try {
+    await db.collection('users').doc(firebaseUser.uid)
+      .collection('watchHistory').doc(driveId).set(entry);
+  } catch(e) { console.warn('Push falhou:', e); }
+}
+
 // ============================================================
 // DADOS INICIAIS
 // ============================================================
@@ -757,19 +837,20 @@ function deleteProfile() {
 function trackPlay(driveId, meta) {
   const data = getWatchData();
   if (!data[driveId] || data[driveId].status !== 'watched') {
-    data[driveId] = { ts: Date.now(), status: 'watching', ...meta };
+    const entry = { ts: Date.now(), status: 'watching', ...meta };
+    data[driveId] = entry;
     saveWatchData(data);
+    pushToFirebase(driveId, entry);
   }
 }
 
 function markWatched() {
   if (!currentEpId) return;
   const data = getWatchData();
-  if (data[currentEpId]) {
-    data[currentEpId].status = 'watched';
-    data[currentEpId].ts = Date.now();
-    saveWatchData(data);
-  }
+  const entry = { ...(data[currentEpId] || {}), status: 'watched', ts: Date.now() };
+  data[currentEpId] = entry;
+  saveWatchData(data);
+  pushToFirebase(currentEpId, entry);
   const btn = document.getElementById('btn-mark-watched');
   btn.classList.add('done');
   btn.textContent = '✓ Assistido';
@@ -1223,6 +1304,15 @@ async function saveNewSeason() {
 // SETTINGS
 // ============================================================
 function openSettings() {
+  const label = document.getElementById('firebase-status-label');
+  const btnLogout = document.getElementById('btn-logout');
+  if (firebaseUser) {
+    label.textContent = `☁ Conectado como ${firebaseUser.displayName} (${firebaseUser.email}) — histórico sincronizado`;
+    btnLogout.style.display = 'inline-flex';
+  } else {
+    label.textContent = '☁ Não conectado — histórico salvo só neste dispositivo';
+    btnLogout.style.display = 'none';
+  }
   document.getElementById('modal-settings').classList.add('open');
 }
 
