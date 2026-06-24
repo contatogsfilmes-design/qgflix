@@ -2027,36 +2027,40 @@ async function autoFetchTmdb() {
   let changed = false;
 
   for (const item of catalog.items) {
-    // Só busca TVmaze se tvmaze_id já for um número válido
-    // tvmaze_id: null = sem TVmaze (usa só Drive thumbnails)
-    if (!item.tvmaze_id || typeof item.tvmaze_id !== 'number') continue;
+    // tvmaze_id: null = explicitamente desabilitado, pula
+    if (item.tvmaze_id === null) continue;
 
-    const needsMeta = !item.poster;
-    const needsEps = item.type === 'series' && item.seasons?.some(s => s.episodes.some(e => !e.still || !e.title));
-    if (!needsMeta && !needsEps) continue;
+    const needsPoster = !item.poster;
+    const needsEps = typeof item.tvmaze_id === 'number' && item.type === 'series'
+      && item.seasons?.some(s => s.episodes.some(e => !e.still || !e.title));
 
-    const showId = item.tvmaze_id;
-    if (needsMeta) {
+    if (!needsPoster && !needsEps) continue;
+
+    // Busca por título para obter poster/backdrop (qualquer série sem capa)
+    if (needsPoster) {
       const show = await tvmazeSearch(item.title);
       if (show) {
-        if (!item.poster && show.image) item.poster = show.image.medium || '';
-        if (!item.backdrop && show.image) item.backdrop = show.image.original || show.image.medium || '';
+        if (show.image) item.poster   = show.image.medium   || '';
+        if (show.image) item.backdrop = show.image.original || show.image.medium || '';
         if (!item.overview && show.summary) item.overview = stripHtml(show.summary);
+        // Salva o tvmaze_id encontrado para futura busca de episódios
+        if (!item.tvmaze_id && show.id) item.tvmaze_id = show.id;
         changed = true;
       }
     }
 
-    if (needsEps && item.type === 'series') {
-      const allEps = await tvmazeEpisodes(showId);
+    // Busca episódios só quando tvmaze_id é número confirmado
+    if (needsEps && typeof item.tvmaze_id === 'number') {
+      const allEps = await tvmazeEpisodes(item.tvmaze_id);
       if (!allEps) continue;
       for (const season of item.seasons) {
         const seasonEps = allEps.filter(e => e.season === season.number);
         season.episodes.forEach((ep, i) => {
           const tvEp = seasonEps[i];
           if (!tvEp) return;
-          if (!ep.title && tvEp.name) ep.title = tvEp.name;
+          if (!ep.title    && tvEp.name)    ep.title    = tvEp.name;
           if (!ep.overview && tvEp.summary) ep.overview = stripHtml(tvEp.summary);
-          if (!ep.still && tvEp.image) ep.still = tvEp.image.medium || '';
+          if (!ep.still    && tvEp.image)   ep.still    = tvEp.image.medium || '';
           changed = true;
         });
       }
