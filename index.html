@@ -1482,6 +1482,7 @@ function renderShowDetail() {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
           <button onclick="renameItem('${item.id}')" style="background:none;border:1px solid #555;color:#aaa;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">✏ Renomear</button>
+          <button onclick="clearShowMeta('${item.id}')" style="background:none;border:1px solid #555;color:#aaa;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap" title="Limpa títulos e thumbs errados dos episódios">🔄 Limpar info</button>
           <button onclick="toggleEpSelectMode()" style="background:${epSelectMode?'#444':'none'};border:1px solid #555;color:#aaa;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">${epSelectMode ? '✕ Cancelar' : '☑ Selecionar'}</button>
           <button onclick="deleteShow('${item.id}')" style="background:#3a0a0a;border:1px solid #7a1a1a;color:#f88;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap">🗑 Excluir</button>
         </div>
@@ -1533,6 +1534,28 @@ function deleteShow(id) {
   catalog.items = catalog.items.filter(i => i.id !== id);
   saveCatalog(catalog);
   closeModal('modal-show');
+  render();
+}
+
+function clearShowMeta(id) {
+  const item = catalog.items.find(i => i.id === id);
+  if (!item) return;
+  if (!confirm(`Limpar títulos, resumos e thumbs dos episódios de "${item.title}"?\nAs thumbs voltarão a usar o frame do Google Drive.`)) return;
+  // Zera dados TVmaze dos episódios
+  for (const season of item.seasons || []) {
+    for (const ep of season.episodes) {
+      ep.title = '';
+      ep.overview = '';
+      ep.still = '';
+    }
+  }
+  // Zera poster/backdrop/overview da série (se quiser rebuscar depois)
+  item.poster = '';
+  item.backdrop = '';
+  item.overview = '';
+  item.tvmaze_id = null;
+  saveCatalog(catalog);
+  renderShowDetail();
   render();
 }
 
@@ -1948,20 +1971,23 @@ async function autoFetchTmdb() {
   let changed = false;
 
   for (const item of catalog.items) {
+    // Só busca TVmaze se tvmaze_id já for um número válido
+    // tvmaze_id: null = sem TVmaze (usa só Drive thumbnails)
+    if (!item.tvmaze_id || typeof item.tvmaze_id !== 'number') continue;
+
     const needsMeta = !item.poster;
     const needsEps = item.type === 'series' && item.seasons?.some(s => s.episodes.some(e => !e.still || !e.title));
     if (!needsMeta && !needsEps) continue;
 
-    let showId = item.tvmaze_id;
-    if (!showId) {
+    const showId = item.tvmaze_id;
+    if (needsMeta) {
       const show = await tvmazeSearch(item.title);
-      if (!show) continue;
-      showId = show.id;
-      item.tvmaze_id = showId;
-      if (!item.poster && show.image) item.poster = show.image.medium || '';
-      if (!item.backdrop && show.image) item.backdrop = show.image.original || show.image.medium || '';
-      if (!item.overview && show.summary) item.overview = stripHtml(show.summary);
-      changed = true;
+      if (show) {
+        if (!item.poster && show.image) item.poster = show.image.medium || '';
+        if (!item.backdrop && show.image) item.backdrop = show.image.original || show.image.medium || '';
+        if (!item.overview && show.summary) item.overview = stripHtml(show.summary);
+        changed = true;
+      }
     }
 
     if (needsEps && item.type === 'series') {
