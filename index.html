@@ -882,40 +882,40 @@ auth.onAuthStateChanged(user => {
 const CATALOG_DOC = db.collection('qgflix').doc('catalog');
 let catalogUnsubscribe = null;
 
+// ID único por dispositivo — ignora atualizações que vieram deste device
+const DEVICE_ID = localStorage.getItem('qgflix_device_id') || (() => {
+  const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  localStorage.setItem('qgflix_device_id', id);
+  return id;
+})();
+
+async function pushCatalogToFirebase(c) {
+  try {
+    await CATALOG_DOC.set({ data: JSON.stringify(c), updatedAt: Date.now(), deviceId: DEVICE_ID });
+  } catch(e) { console.warn('Catalog push falhou:', e); }
+}
+
 function startCatalogSync() {
   if (catalogUnsubscribe) catalogUnsubscribe();
   const indicator = document.getElementById('sync-indicator');
 
-  // Primeiro: sobe o catálogo local para o Firebase (local sempre ganha)
+  // Sobe catálogo local pro Firebase imediatamente (web é a fonte da verdade)
   pushCatalogToFirebase(catalog);
 
-  // Listener: só aplica atualização remota se vier de OUTRO dispositivo
-  // (remoteTs mais recente que o que este dispositivo subiu)
-  let lastPushedTs = Date.now();
+  // Escuta mudanças — só aplica se veio de OUTRO dispositivo
   catalogUnsubscribe = CATALOG_DOC.onSnapshot(snap => {
     if (!snap.exists) return;
+    if (snap.data().deviceId === DEVICE_ID) return; // nossa própria escrita, ignora
     try {
-      const remoteTs = snap.data().updatedAt || 0;
-      if (remoteTs > lastPushedTs) {
-        // Outro dispositivo atualizou — puxa
-        const remote = JSON.parse(snap.data().data);
-        catalog = remote;
-        localStorage.setItem('qgflix_catalog', JSON.stringify(remote));
-        localStorage.setItem('qgflix_catalog_ts', String(remoteTs));
-        render();
-        indicator.textContent = '☁ atualizado';
-        indicator.style.display = 'inline';
-        setTimeout(() => { indicator.style.display = 'none'; }, 2000);
-      }
+      const remote = JSON.parse(snap.data().data);
+      catalog = remote;
+      localStorage.setItem('qgflix_catalog', JSON.stringify(remote));
+      render();
+      indicator.textContent = '☁ atualizado';
+      indicator.style.display = 'inline';
+      setTimeout(() => { indicator.style.display = 'none'; }, 2000);
     } catch(e) { console.warn('Catalog parse falhou:', e); }
   }, e => { console.warn('Catalog listener erro:', e); });
-}
-
-async function pushCatalogToFirebase(c) {
-  const ts = Date.now();
-  try {
-    await CATALOG_DOC.set({ data: JSON.stringify(c), updatedAt: ts });
-  } catch(e) { console.warn('Catalog push falhou:', e); }
 }
 
 async function syncFromFirebase() {
