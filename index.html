@@ -1632,6 +1632,12 @@ function playMovie(id) {
 }
 
 function openPlayer(driveId, showTitle, epTitle, overview) {
+  // iOS Safari: abre em nova aba no player nativo do Drive
+  if (isIOS) {
+    window.open(`https://drive.google.com/file/d/${driveId}/view`, '_blank');
+    return;
+  }
+
   const frame = document.getElementById('player-frame');
   frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
   document.getElementById('player-show-title').textContent = showTitle;
@@ -1642,17 +1648,7 @@ function openPlayer(driveId, showTitle, epTitle, overview) {
   btn.classList.toggle('done', isWatched(driveId));
   btn.textContent = isWatched(driveId) ? '✓ Assistido' : '✓ Marcar como assistido';
   closeModal('modal-show');
-  const overlay = document.getElementById('modal-player');
-  overlay.classList.add('open');
-  // iOS: tenta fullscreen no iframe após carregar
-  if (isIOS) {
-    frame.onload = () => {
-      try {
-        if (frame.requestFullscreen) frame.requestFullscreen();
-        else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
-      } catch(e) {}
-    };
-  }
+  document.getElementById('modal-player').classList.add('open');
 }
 
 // ============================================================
