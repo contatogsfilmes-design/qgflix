@@ -1640,19 +1640,10 @@ function openPlayer(driveId, showTitle, epTitle, overview) {
   const video  = document.getElementById('player-video');
   const vsrc   = document.getElementById('player-video-src');
 
-  if (isIOS) {
-    // Player nativo iOS: <video> com URL direta do Drive
-    frame.style.display = 'none';
-    video.style.display = 'block';
-    // Para o video anterior se estava tocando
-    video.pause();
-    vsrc.src = `https://drive.google.com/uc?id=${driveId}&export=download&confirm=t`;
-    video.load();
-  } else {
-    video.style.display = 'none';
-    frame.style.display = 'block';
-    frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
-  }
+  // Sempre usa iframe com preview URL — não aciona o app Drive no iOS
+  video.style.display = 'none';
+  frame.style.display = 'block';
+  frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
 
   document.getElementById('player-show-title').textContent = showTitle;
   document.getElementById('player-ep-title').textContent = epTitle;
