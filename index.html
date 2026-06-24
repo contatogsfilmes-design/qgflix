@@ -955,7 +955,7 @@ const INITIAL_CATALOG = {
       id: 'the-good-doctor',
       type: 'series',
       title: 'The Good Doctor',
-      tmdb_id: 71712,
+      tvmaze_id: 8817,
       overview: 'Shaun Murphy, um jovem cirurgião autista com síndrome savant, se junta ao departamento de cirurgia de um hospital universitário renomado, onde precisa provar que sua condição não é um obstáculo, mas uma vantagem.',
       backdrop: '',
       poster: '',
@@ -2090,7 +2090,23 @@ function checkGate() {
 // ============================================================
 // INIT
 // ============================================================
+function migrateCatalog() {
+  let changed = false;
+  catalog.items.forEach(item => {
+    // Corrige tmdb_id → tvmaze_id com ID correto por série
+    if (item.id === 'the-good-doctor' && item.tmdb_id && !item.tvmaze_id) {
+      item.tvmaze_id = 8817;
+      delete item.tmdb_id;
+      item.poster = '';
+      item.backdrop = '';
+      changed = true;
+    }
+  });
+  if (changed) saveCatalog(catalog);
+}
+
 function initApp() {
+  migrateCatalog();
   render();
   autoFetchTmdb();
   updateHeaderProfile();
