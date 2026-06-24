@@ -718,14 +718,18 @@ body { background:var(--dark); color:var(--text); font-family:'Segoe UI',sans-se
 <div class="modal-overlay" id="modal-player">
   <div class="modal-player">
     <button class="modal-close" onclick="closeModal('modal-player')">✕</button>
+    <!-- Desktop: iframe Drive -->
     <iframe class="player-frame" id="player-frame" src="" allow="autoplay; fullscreen" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>
+    <!-- Mobile iOS: video nativo -->
+    <video class="player-frame" id="player-video" controls playsinline preload="metadata" style="display:none;background:#000;width:100%">
+      <source id="player-video-src" src="" type="video/mp4"/>
+    </video>
     <div class="modal-info">
       <div class="modal-show-title" id="player-show-title"></div>
       <div class="modal-ep-title" id="player-ep-title"></div>
       <div class="modal-overview" id="player-overview"></div>
       <div class="modal-actions">
         <button class="btn-mark-watched" id="btn-mark-watched" onclick="markWatched()">✓ Marcar como assistido</button>
-        <button class="btn-download" id="btn-fullscreen" onclick="forceFullscreen()" style="display:none">⛶ Tela cheia</button>
         <a class="btn-download" id="player-download" href="#" target="_blank">⬇ Baixar via Drive</a>
       </div>
     </div>
@@ -1632,14 +1636,24 @@ function playMovie(id) {
 }
 
 function openPlayer(driveId, showTitle, epTitle, overview) {
-  // iOS Safari: abre em nova aba no player nativo do Drive
+  const frame  = document.getElementById('player-frame');
+  const video  = document.getElementById('player-video');
+  const vsrc   = document.getElementById('player-video-src');
+
   if (isIOS) {
-    window.open(`https://drive.google.com/file/d/${driveId}/view`, '_blank');
-    return;
+    // Player nativo iOS: <video> com URL direta do Drive
+    frame.style.display = 'none';
+    video.style.display = 'block';
+    // Para o video anterior se estava tocando
+    video.pause();
+    vsrc.src = `https://drive.google.com/uc?id=${driveId}&export=download&confirm=t`;
+    video.load();
+  } else {
+    video.style.display = 'none';
+    frame.style.display = 'block';
+    frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
   }
 
-  const frame = document.getElementById('player-frame');
-  frame.src = `https://drive.google.com/file/d/${driveId}/preview`;
   document.getElementById('player-show-title').textContent = showTitle;
   document.getElementById('player-ep-title').textContent = epTitle;
   document.getElementById('player-overview').textContent = overview;
@@ -1649,6 +1663,13 @@ function openPlayer(driveId, showTitle, epTitle, overview) {
   btn.textContent = isWatched(driveId) ? '✓ Assistido' : '✓ Marcar como assistido';
   closeModal('modal-show');
   document.getElementById('modal-player').classList.add('open');
+}
+
+function closePlayerCleanup() {
+  const video = document.getElementById('player-video');
+  if (video) { video.pause(); video.src = ''; }
+  const frame = document.getElementById('player-frame');
+  if (frame) frame.src = '';
 }
 
 // ============================================================
@@ -1948,6 +1969,8 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   if (id === 'modal-player') {
     document.getElementById('player-frame').src = '';
+    const video = document.getElementById('player-video');
+    if (video) { video.pause(); document.getElementById('player-video-src').src = ''; video.load(); }
     currentEpId = null;
   }
 }
