@@ -882,42 +882,40 @@ auth.onAuthStateChanged(user => {
 const CATALOG_DOC = db.collection('qgflix').doc('catalog');
 let catalogUnsubscribe = null;
 
-async function pushCatalogToFirebase(c) {
-  try {
-    await CATALOG_DOC.set({ data: JSON.stringify(c), updatedAt: Date.now() });
-  } catch(e) { console.warn('Catalog push falhou:', e); }
-}
-
 function startCatalogSync() {
   if (catalogUnsubscribe) catalogUnsubscribe();
   const indicator = document.getElementById('sync-indicator');
+
+  // Primeiro: sobe o catálogo local para o Firebase (local sempre ganha)
+  pushCatalogToFirebase(catalog);
+
+  // Listener: só aplica atualização remota se vier de OUTRO dispositivo
+  // (remoteTs mais recente que o que este dispositivo subiu)
+  let lastPushedTs = Date.now();
   catalogUnsubscribe = CATALOG_DOC.onSnapshot(snap => {
-    if (!snap.exists) {
-      // Primeira vez: sobe o catálogo local
-      pushCatalogToFirebase(catalog);
-      return;
-    }
+    if (!snap.exists) return;
     try {
       const remoteTs = snap.data().updatedAt || 0;
-      const localTs  = parseInt(localStorage.getItem('qgflix_catalog_ts') || '0');
-
-      if (remoteTs > localTs) {
-        // Firebase é mais recente — puxa para local
+      if (remoteTs > lastPushedTs) {
+        // Outro dispositivo atualizou — puxa
         const remote = JSON.parse(snap.data().data);
         catalog = remote;
         localStorage.setItem('qgflix_catalog', JSON.stringify(remote));
-        localStorage.setItem('qgflix_catalog_version', CATALOG_VERSION);
         localStorage.setItem('qgflix_catalog_ts', String(remoteTs));
         render();
         indicator.textContent = '☁ atualizado';
         indicator.style.display = 'inline';
         setTimeout(() => { indicator.style.display = 'none'; }, 2000);
-      } else if (localTs > remoteTs) {
-        // Local é mais recente — sobe para Firebase
-        pushCatalogToFirebase(catalog);
       }
     } catch(e) { console.warn('Catalog parse falhou:', e); }
   }, e => { console.warn('Catalog listener erro:', e); });
+}
+
+async function pushCatalogToFirebase(c) {
+  const ts = Date.now();
+  try {
+    await CATALOG_DOC.set({ data: JSON.stringify(c), updatedAt: ts });
+  } catch(e) { console.warn('Catalog push falhou:', e); }
 }
 
 async function syncFromFirebase() {
@@ -1107,15 +1105,16 @@ const INITIAL_CATALOG = {
 const CATALOG_VERSION = '6'; // incrementar sempre que INITIAL_CATALOG mudar estrutura
 
 function loadCatalog() {
-  const version = localStorage.getItem('qgflix_catalog_version');
   const saved = localStorage.getItem('qgflix_catalog');
-  if (!saved || version !== CATALOG_VERSION) {
-    // versão desatualizada ou primeira vez — reseta com os dados do HTML
+  if (!saved) {
+    // Primeira vez — usa catálogo base do código
     const fresh = JSON.parse(JSON.stringify(INITIAL_CATALOG));
     localStorage.setItem('qgflix_catalog', JSON.stringify(fresh));
     localStorage.setItem('qgflix_catalog_version', CATALOG_VERSION);
     return fresh;
   }
+  // Tem dados salvos — usa sempre, independente de versão
+  localStorage.setItem('qgflix_catalog_version', CATALOG_VERSION);
   return JSON.parse(saved);
 }
 function saveCatalog(c) {
